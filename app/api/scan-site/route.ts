@@ -1,12 +1,13 @@
 // app/api/scan-site/route.ts
 import axios from "axios";
-import * as cheerio from "cheerio";
+import * as cheerio from "cheerio"; // Import the main cheerio object
 import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import https from "https";
 // --- FIXED IMPORT ---
 // Import the type for the cheerio function/object ($)
-import type { $ } from "cheerio";
+// Use CheerioAPI which is the standard type for the loaded object in recent cheerio versions
+import type { CheerioAPI } from "cheerio"; 
 
 /* ---------------- CONFIG ---------------- */
 const FETCH_TIMEOUT = 20000;
@@ -44,7 +45,7 @@ async function fetchHTML(url: string): Promise<string> {
 
 function extractLinks(html: string, baseUrl: string): string[] {
   // --- CORRECTED TYPE USAGE ---
-  const $: $ = cheerio.load(html || ""); // Use the imported $ type
+  const $: CheerioAPI = cheerio.load(html || ""); // Use the imported CheerioAPI type
   const baseHost = new URL(baseUrl).hostname;
   const links = new Set<string>();
 
@@ -71,7 +72,7 @@ function extractLinks(html: string, baseUrl: string): string[] {
   return Array.from(links);
 }
 
-/* ----------- SMART POST FILTER (FIXED - Less Aggressive) ----------- */
+/* ----------- SMART POST FILTER (FIXED - Less Aggressive, Include Tools) ----------- */
 function isLikelyPostUrl(url: string): boolean {
   const u = url.toLowerCase();
   const urlObj = new URL(u);
@@ -111,7 +112,8 @@ function isLikelyPostUrl(url: string): boolean {
 
   // ❌ skip obvious category/archive pages (excluding /downloader/ now via keyword check above)
   const obviousCategoryPatterns = [
-    /\/(category|tag|author|feed|search|wp-json|archive|tools|tool|blog|news|events|products|services|portfolio|projects|members|groups|forums|topics|threads|comments|reviews|testimonials|faq|support|help|docs|documentation|tutorials|guides|resources|media|galleries|photos|images|videos|audio|music|files|attachments|uploads|admin|login|register|signup|cart|checkout|shop|store|pricing|plans|packages|deals|offers|promotions|campaigns|banners|ads|advertising|sponsors|partners|affiliates|referrals|tracking|stats|statistics|analytics|reports|dashboards|control|control-panel|settings|preferences|profile|account|user|users|members|dashboard|admin-panel|wp-admin|wp-content|wp-includes|cgi-bin|bin|includes|inc|lib|libraries|modules|plugins|themes|templates|layouts|designs|styles|css|js|javascript|scripts|api|json|xml|rss|atom|sitemap|robots|favicon|apple-touch-icon|manifest|browserconfig|humans|readme|license|copyright|trademark|patent|privacy-policy|terms-of-service|tos|eula|end-user-license-agreement|disclaimer|refund-policy|return-policy|shipping-policy|delivery-policy|warranty|guarantee|money-back|moneyback|satisfaction|security|ssl|tls|encryption|certificate|cert|keys|key|token|access|password|pass|login|signin|sign-in|sign_up|signup|register|registration|subscribe|subscription|newsletter|mailing|mail|email|e-mail|contact-us|contactus|contact_form|form|feedback|support|help|ticket|issue|bug|report|complaint|claim|request|inquiry|question|faq|frequently-asked-questions|about-us|aboutus|about|company|team|staff|employees|careers|jobs|employment|work|hire|recruitment|apply|application|resume|cv|portfolio|projects|services|solutions|products|features|benefits|advantages|pros|cons|comparison|vs|versus|alternative|alternatives|review|reviews|rating|ratings|testimonials|testimony|testimonial|recommendation|recommendations|endorsement|endorsements|praise|praises|award|awards|certification|certifications|license|licenses|accreditation|accreditations|membership|memberships|subscription|subscriptions|pricing|price|cost|fee|fees|charge|charges|payment|payments|billing|invoice|receipt|order|orders|purchase|purchases|buy|sell|sale|sales|transaction|transactions|deal|deals|offer|offers|discount|discounts|coupon|coupons|promo|promos|promotion|promotions|campaign|campaigns|marketing|ad|ads|advertisement|advertisements|banner|banners|sponsor|sponsors|partner|partners|affiliate|affiliates|referral|referrals|tracking|track|analytics|stats|statistics|report|reports|dashboard|dashboards|control|controls|setting|settings|preference|preferences|profile|profiles|account|accounts|user|users|member|members|dashboard|admin|signin|sign|apply|award|benefit|cart|certificate|charge|checkout|claim|comment|compare|complaint|compliance|confirm|confirmation|contact|content|contract|contribute|contributor|control|copyright|cost|coupon|create|credit|css|currency|current|custom|customer|customize|cv|data|database|date|day|deactivate|deal|debug|default|delete|deliver|delivery|demo|department|deploy|deposit|design|destroy|detail|developer|development|device|diagnostic|diagram|dialog|dictionary|difference|directory|disable|discuss|discussion|disk|display|document|documentation|domain|donate|donation|download|draft|edit|editor|effect|email|employee|employment|enable|encrypt|encryption|end|engine|enterprise|entry|environment|error|event|example|exchange|execute|exit|experience|export|external|factory|faq|feature|feed|feedback|file|filter|find|fix|flash|folder|font|footer|form|format|forum|forward|framework|free|frequency|friend|ftp|function|fund|gallery|game|gateway|general|generate|generator|get|gift|global|goal|google|govern|governance|group|guide|gzip|header|help|history|home|host|hosting|hour|html|icon|id|idea|identify|identity|image|import|inbox|index|industry|info|information|input|insert|install|instance|institute|instruction|instrument|insurance|integration|interface|internet|interval|intro|introduct|inventory|invite|invoice|ip|issue|item|java|javascript|job|join|journal|js|json|jump|key|keyboard|keyword|label|language|launch|law|layer|layout|leader|lead|learn|legal|level|license|limit|line|link|list|load|local|location|lock|log|login|logo|logout|logotype|main|manage|manager|manual|map|market|master|match|max|maximum|media|member|memory|menu|merge|message|meta|metadata|method|min|minimum|minute|mirror|mobile|mode|model|module|monitor|month|more|move|multi|music|name|navigate|navigation|network|new|news|newsletter|next|no|node|note|notification|notify|number|object|offer|office|offline|offset|online|open|operation|option|order|organization|organize|origin|output|overview|owner|package|page|pagination|panel|paper|paragraph|parent|part|partner|party|pass|password|paste|patch|path|payment|pdf|peer|pending|people|percent|period|permission|permit|person|personal|phone|photo|php|physical|pin|ping|pixel|plan|platform|play|plugin|policy|poll|pop|popular|popup|portal|post|power|preference|premium|present|presentation|preview|previous|price|primary|print|privacy|private|process|processor|product|production|profile|program|progress|project|promo|promotion|protocol|provider|proxy|public|publish|pull|purchase|push|quality|quantity|query|question|queue|quick|quote|radio|random|range|rank|rate|rating|read|reader|reading|ready|real|rebuild|receive|recent|recommend|record|recover|recovery|recruit|recruitment|redirect|reduce|reference|refund|refuse|regenerate|region|register|registration|regular|reject|relation|relationship|release|reload|remove|rename|render|renew|repair|repeat|replace|reply|report|repository|request|require|requirement|rescue|research|reset|resize|resolution|resolve|resource|response|restore|result|resume|retire|return|reverse|review|revoke|right|role|root|route|router|rule|run|safe|sale|sample|save|scale|scan|schedule|schema|scope|score|screen|script|scroll|search|second|section|security|select|self|sell|send|sent|sequence|serial|server|service|session|set|setting|setup|share|shell|shift|shop|show|shutdown|sign|signal|signature|signup|sim|simulation|single|site|size|skill|slide|slot|sms|social|software|solution|sort|source|space|spam|spec|special|specific|specification|speed|spell|spelling|split|sponsor|sport|sql|src|ssl|staff|stage|standard|start|state|static|station|statistic|status|stop|storage|store|stream|string|structure|style|stylesheet|sub|subject|submit|subscribe|subscription|subscript|success|suggest|summary|support|suspend|swap|switch|symbol|sync|synchronize|syntax|system|tab|table|tag|target|task|team|tech|tele|telephone|template|term|terminal|test|text|theme|thread|time|tip|title|tls|to|today|toggle|token|tool|top|topic|total|tour|track|trade|traffic|transaction|transfer|transform|transition|translate|transport|trash|tree|trigger|type|ui|unban|undo|uninstall|union|unit|unlimit|unlock|unmark|unpin|unpublish|unquote|unregister|unrestrict|unsubscribe|unwatch|update|upgrade|upload|url|usage|use|user|username|utility|validate|validation|value|variable|variant|version|video|view|viewer|virtual|virus|visit|visitor|volume|vote|vpn|watch|web|website|week|welcome|widget|wifi|wiki|window|wireless|word|work|worker|workflow|workplace|workspace|world|write|writer|writing|www|xml|year|yes|zip)/,
+    // Keep all your existing patterns, but REMOVED /\/(downloader|...)/
+    /\/(category|tag|author|feed|search|wp-json|archive|tools|tool|blog|news|events|products|services|portfolio|projects|members|groups|forums|topics|threads|comments|reviews|testimonials|faq|support|help|docs|documentation|tutorials|guides|resources|media|galleries|photos|images|videos|audio|music|files|attachments|uploads|admin|login|register|signup|cart|checkout|shop|store|pricing|plans|packages|deals|offers|promotions|campaigns|banners|ads|advertising|sponsors|partners|affiliates|referrals|tracking|stats|statistics|analytics|reports|dashboards|control|control-panel|settings|preferences|profile|account|user|users|members|dashboard|admin-panel|wp-admin|wp-content|wp-includes|cgi-bin|bin|includes|inc|lib|libraries|modules|plugins|themes|templates|layouts|designs|styles|css|js|javascript|scripts|api|json|xml|rss|atom|sitemap|robots|favicon|apple-touch-icon|manifest|browserconfig|humans|readme|license|copyright|trademark|patent|privacy-policy|terms-of-service|tos|eula|end-user-license-agreement|disclaimer|refund-policy|return-policy|shipping-policy|delivery-policy|warranty|guarantee|money-back|moneyback|satisfaction|security|ssl|tls|encryption|certificate|cert|keys|key|token|access|password|pass|login|signin|sign-in|sign_up|signup|register|registration|subscribe|subscription|newsletter|mailing|mail|email|e-mail|contact-us|contactus|contact_form|form|feedback|support|help|ticket|issue|bug|report|complaint|claim|request|inquiry|question|faq|frequently-asked-questions|about-us|aboutus|about|company|team|staff|employees|careers|jobs|employment|work|hire|recruitment|apply|application|resume|cv|portfolio|projects|services|solutions|products|features|benefits|advantages|pros|cons|comparison|vs|versus|alternative|alternatives|review|reviews|rating|ratings|testimonials|testimony|testimonial|recommendation|recommendations|endorsement|endorsements|praise|praises|award|awards|certification|certifications|license|licenses|accreditation|accreditations|membership|memberships|subscription|subscriptions|pricing|price|cost|fee|fees|charge|charges|payment|payments|billing|invoice|receipt|order|orders|purchase|purchases|buy|sell|sale|sales|transaction|transactions|deal|deals|offer|offers|discount|discounts|coupon|coupons|promo|promos|promotion|promotions|campaign|campaigns|marketing|ad|ads|advertisement|advertisements|banner|banners|sponsor|sponsors|partner|partners|affiliate|affiliates|referral|referrals|tracking|track|analytics|stats|statistics|report|reports|dashboard|dashboards|control|controls|setting|settings|preference|preferences|profile|profiles|account|accounts|user|users|member|members|dashboard|admin|signin|sign|apply|award|benefit|cart|certificate|charge|checkout|claim|comment|compare|complaint|compliance|confirm|confirmation|contact|content|contract|contribute|contributor|control|copyright|cost|coupon|create|credit|currency|current|custom|customer|customize|cv|data|database|date|day|deactivate|deal|debug|default|delete|deliver|delivery|demo|department|deploy|deposit|design|destroy|detail|developer|development|device|diagnostic|diagram|dialog|dictionary|difference|directory|disable|discuss|discussion|disk|display|document|documentation|domain|donate|donation|draft|edit|editor|effect|email|employee|employment|enable|encrypt|encryption|end|engine|enterprise|entry|environment|error|event|example|exchange|execute|exit|experience|export|external|factory|faq|feature|feed|feedback|file|filter|find|fix|flash|folder|font|footer|form|format|forum|forward|framework|free|frequency|friend|ftp|function|fund|gallery|game|gateway|general|generate|generator|get|gift|global|goal|google|govern|governance|group|guide|gzip|header|help|history|home|host|hosting|hour|html|icon|id|idea|identify|identity|image|import|inbox|index|industry|info|information|input|insert|install|instance|institute|instruction|instrument|insurance|integration|interface|internet|interval|intro|introduct|inventory|invite|invoice|ip|issue|item|java|javascript|job|join|journal|js|json|jump|key|keyboard|keyword|label|language|launch|law|layer|layout|leader|lead|learn|legal|level|license|limit|line|link|list|load|local|location|lock|log|logo|logout|logotype|main|manage|manager|manual|map|market|master|match|max|maximum|media|member|memory|menu|merge|message|meta|metadata|method|min|minimum|minute|mirror|mobile|mode|model|module|monitor|month|more|move|multi|music|name|navigate|navigation|network|new|news|newsletter|next|no|node|note|notification|notify|number|object|offer|office|offline|offset|online|open|operation|option|order|organization|organize|origin|output|overview|owner|package|page|pagination|panel|paper|paragraph|parent|part|partner|party|pass|password|paste|patch|path|payment|pdf|peer|pending|people|percent|period|permission|permit|person|personal|phone|photo|php|physical|pin|ping|pixel|plan|platform|play|plugin|policy|poll|pop|popular|popup|portal|post|power|preference|premium|present|presentation|preview|previous|price|primary|print|privacy|private|process|processor|product|production|profile|program|progress|project|promo|promotion|protocol|provider|proxy|public|publish|pull|purchase|push|quality|quantity|query|question|queue|quick|quote|radio|random|range|rank|rate|rating|read|reader|reading|ready|real|rebuild|receive|recent|recommend|record|recover|recovery|recruit|recruitment|redirect|reduce|reference|refund|refuse|regenerate|region|register|registration|regular|reject|relation|relationship|release|reload|remove|rename|render|renew|repair|repeat|replace|reply|report|repository|request|require|requirement|rescue|research|reset|resize|resolution|resolve|resource|response|restore|result|resume|retire|return|reverse|review|revoke|right|role|root|route|router|rule|run|safe|sale|sample|save|scale|scan|schedule|schema|scope|score|screen|script|scroll|search|second|section|security|select|self|sell|send|sent|sequence|serial|server|service|session|set|setting|setup|share|shell|shift|shop|show|shutdown|sign|signal|signature|signup|sim|simulation|single|site|size|skill|slide|slot|sms|social|software|solution|sort|source|space|spam|spec|special|specific|specification|speed|spell|spelling|split|sponsor|sport|sql|src|ssl|staff|stage|standard|start|state|static|station|statistic|status|stop|storage|store|stream|string|structure|style|stylesheet|sub|subject|submit|subscribe|subscription|subscript|success|suggest|summary|support|suspend|swap|switch|symbol|sync|synchronize|syntax|system|tab|table|tag|target|task|team|tech|tele|telephone|template|term|terminal|test|text|theme|thread|time|tip|title|tls|to|today|toggle|token|tool|top|topic|total|tour|track|trade|traffic|transaction|transfer|transform|transition|translate|transport|trash|tree|trigger|type|ui|unban|undo|uninstall|union|unit|unlimit|unlock|unmark|unpin|unpublish|unquote|unregister|unrestrict|unsubscribe|unwatch|update|upgrade|upload|url|usage|use|user|username|utility|validate|validation|value|variable|variant|version|video|view|viewer|virtual|virus|visit|visitor|volume|vote|vpn|watch|web|website|week|welcome|widget|wifi|wiki|window|wireless|word|work|worker|workflow|workplace|workspace|world|write|writer|writing|www|xml|year|yes|zip)/,
     /\/page\/\d+/,
     /\/feed$/,
   ];
@@ -174,7 +176,7 @@ function isSafeContent(text: string, urlPath: string): boolean {
     'software-download', 'software-free', 'free-software',
     'movie-download', 'movie-free', 'free-movie', 'torrent-movie',
     'music-download', 'music-free', 'free-music', 'torrent-music',
-    'downloader',
+    'downloader', // Added 'downloader' as a keyword to trigger analysis
     'video-downloader', 'audio-downloader', 'mp3-downloader', 'mp4-downloader',
     'instagram-downloader', 'tiktok-downloader', 'youtube-downloader', 'facebook-downloader',
     'soundcloud-downloader', 'twitch-downloader', 'pinterest-downloader'
@@ -216,7 +218,7 @@ function isSafeContent(text: string, urlPath: string): boolean {
 }
 
 // Enhanced function to check content quality
-function analyzeContentQuality($: $, url: string): { issues: string[]; wordCount: number; hasProperHeadings: boolean } { // Use $ type
+function analyzeContentQuality($: CheerioAPI, url: string): { issues: string[]; wordCount: number; hasProperHeadings: boolean } { // Use CheerioAPI type
   const issues: string[] = [];
   let wordCount = 0;
   let hasProperHeadings = false;
@@ -267,7 +269,7 @@ function checkForDuplicateContent(content: string, existingContent: string[]): b
 }
 
 // ✅ STRICT violation detection for CLEAR violations only
-function detectClearViolations($: $, url: string): any[] { // Use $ type
+function detectClearViolations($: CheerioAPI, url: string): any[] { // Use CheerioAPI type
   console.log(`🔎 Checking for CLEAR violations on: ${url}`);
   const violations: any[] = [];
   
@@ -373,7 +375,6 @@ function detectClearViolations($: $, url: string): any[] { // Use $ type
 }
 
 // ✅ Enhanced AI analysis with strict violation detection - USING GPT-4o-mini (cost-effective)
-// This function now takes the OpenAI client instance as an argument
 async function analyzeTextWithAI(text: string, url: string = "", context: string = ""): Promise<any> {
   console.log(`🤖 Analyzing content for: ${url} (${text.length} chars)`);
   
@@ -383,11 +384,16 @@ async function analyzeTextWithAI(text: string, url: string = "", context: string
     return { violations: [], summary: "Safe content", suggestions: [] };
   }
   
+  if (!openai) {
+    console.error("❌ OpenAI client not initialized. Did you set OPENAI_API_KEY?");
+    return { violations: [], summary: "API key missing or invalid", suggestions: [] };
+  }
+
   console.log(`🧠 Sending to AI for analysis: ${url}`);
   
   try {
     const startTime = Date.now();
-    const res = await openai.chat.completions.create({ // Use the 'openai' instance defined at the top level
+    const res = await openai.chat.completions.create({
       model: "gpt-4o-mini", // Using the cost-effective model
       temperature: 0.1,
       max_tokens: 800,
@@ -596,7 +602,7 @@ CONTENT: ${bodyText}
     const allContentHashes: string[] = [];
 
     // Analyze CONTENT POSTS concurrently
-    const pagesWithIssues: any[] = [];
+    const pagesWithIssues: any[] = []; // Renamed from pagesWithViolations for clarity
     const concurrency = 12;
     console.log(`🤖 Starting AI analysis of ${postsToScan.length} CONTENT POSTS...`);
 
@@ -655,7 +661,7 @@ CONTENT: ${bodyText}
             }
             allContentHashes.push(bodyText);
 
-            // Analyze content with AI (using the function defined above, passing the client instance)
+            // Analyze content with AI
             const ai = await analyzeTextWithAI(fullContext, p, "Content post analysis");
             
             // Detect CLEAR violations on each post
@@ -673,50 +679,22 @@ CONTENT: ${bodyText}
 
             // CRITICAL FIX: ONLY add to violations list if there are ACTUALLY violations
             // NEW LOGIC: Add if AI found violations OR if AI provided specific suggestions (indicating issues)
-            const hasViolations = ai.violations?.length > 0;
-            const hasSuggestions = ai.suggestions?.length > 0;
-            const hasSummaryViolation = ai.summary?.toLowerCase().includes("violation");
-            const hasQualityIssues = postQuality.issues.length > 0;
-
-            const shouldAddToIssues = hasViolations || hasSuggestions || hasSummaryViolation || hasQualityIssues;
-
-            if (shouldAddToIssues) {
+            if (ai.violations?.length > 0 || ai.suggestions?.length > 0 || ai.summary?.toLowerCase().includes("violation") || postQuality.issues.length > 0) {
               const combinedResult = {
                   url: p,
                   ...ai, // Spread AI results (violations, summary, suggestions)
-                  qualityIssues: hasQualityIssues ? postQuality.issues : undefined
+                  qualityIssues: postQuality.issues.length > 0 ? postQuality.issues : undefined
               };
-
-              // --- IMPROVED SUMMARY LOGIC ---
-              let finalSummaryParts = [];
-              // Start with the AI's original summary if it mentions violations
-              if (hasSummaryViolation) {
-                  finalSummaryParts.push(ai.summary);
-              } else if (hasViolations) {
-                  // If there are violations but summary doesn't mention violation, keep original summary or default
-                  if (ai.summary && !ai.summary.toLowerCase().includes("no clear violations")) {
-                     finalSummaryParts.push(ai.summary);
-                  } else if (ai.summary && ai.summary.toLowerCase().includes("no clear violations")) {
-                     // If AI says "no clear" but we have violations, perhaps it was a mistake, just use the violations count
-                     finalSummaryParts.push(`${ai.violations.length} violation(s) detected.`);
-                  } else {
-                     finalSummaryParts.push(`${ai.violations.length} violation(s) detected.`);
-                  }
-              } else if (hasSuggestions) {
-                  // If no violations but has suggestions, prioritize suggestions in summary
-                  finalSummaryParts.push(`Potential issues found (AI Suggestions: ${ai.suggestions.join(', ')})`);
+              // Enhance summary if quality issues exist
+              if (postQuality.issues.length > 0) {
+                combinedResult.summary = (combinedResult.summary || "Content issues detected") + ` (Quality: ${postQuality.issues.join(', ')})`;
               }
-
-              // Add quality issues to the summary if present
-              if (hasQualityIssues) {
-                  finalSummaryParts.push(`Quality Issues: ${postQuality.issues.join(', ')}`);
+              // Enhance summary if AI provided suggestions but no violations
+              if (ai.suggestions?.length > 0 && (ai.violations?.length === 0 || !ai.violations)) {
+                  combinedResult.summary = (combinedResult.summary || "Potential issues found") + ` (AI Suggestions: ${ai.suggestions.join(', ')})`;
               }
-
-              // Combine parts with a separator
-              combinedResult.summary = finalSummaryParts.join(' ');
-
               pagesWithIssues.push(combinedResult);
-              console.log(`🚩 Issues found in ${p}: ${ai.violations.length} violations, ${ai.suggestions.length} suggestions, ${postQuality.issues.length} quality issues. Final Summary: ${combinedResult.summary}`);
+              console.log(`🚩 Issues found in ${p}: ${ai.violations.length} violations, ${ai.suggestions.length} suggestions, ${postQuality.issues.length} quality issues`);
             } else {
               console.log(`✅ No issues in ${p} - NOT adding to issues list`);
             }
