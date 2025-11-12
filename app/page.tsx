@@ -159,11 +159,10 @@ export default function OverviewPage() {
               transition={{ duration: 0.3 }}
               className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight"
             >
-              PolicyGuard<span className="text-blue-600">.</span>
+              PubGuard<span className="text-blue-600">.</span>
             </motion.h1>
             <p className="text-gray-600 text-lg max-w-2xl mx-auto leading-relaxed">
-              AI-powered compliance scanning. Identify policy violations and
-              optimize your sites for AdSense approval.
+              AI-powered compliance scanning. Identify policy violations.
             </p>
           </motion.div>
 

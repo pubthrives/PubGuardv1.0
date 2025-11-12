@@ -109,7 +109,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                 <Shield className="text-white" size={18} />
               </div>
               <div>
-                <h1 className="text-lg font-semibold text-gray-900 tracking-tight">PolicyGuard</h1>
+                <h1 className="text-lg font-semibold text-gray-900 tracking-tight">PubGuard</h1>
                 <p className="text-xs text-gray-500 mt-0.5">Compliance Dashboard</p>
               </div>
             </div>
