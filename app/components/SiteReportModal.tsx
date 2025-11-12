@@ -1,7 +1,7 @@
 // components/SiteReportModal.tsx
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     X,
@@ -16,16 +16,8 @@ import {
     AlertCircle,
     Download,
     MoreHorizontal,
-    Brain,
-    Globe,
-    Shield,
     Brain as BrainIcon,
-    AlertCircle as AlertIcon,
-    CheckCircle as CheckIcon,
-    X as XIcon,
-    Loader2,
 } from "lucide-react";
-import toast, { Toaster } from "react-hot-toast";
 
 // Define the type for an item within the violations array returned by the API
 type APIViolationItem = {
@@ -79,7 +71,8 @@ export default function SiteReportModal({
     if (!isOpen || !report) return null;
 
     const score = report.score ?? 0;
-    const barColor = score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-400" : "bg-red-500";
+    const barColor =
+        score >= 80 ? "bg-green-500" : score >= 60 ? "bg-yellow-400" : "bg-red-500";
 
     // ---------- helpers (UI-only) ----------
     const formatViolation = (v: APIViolationItem): string => {
@@ -186,10 +179,12 @@ export default function SiteReportModal({
                                         <button
                                             onClick={() => {
                                                 const content = JSON.stringify(report, null, 2); // Or generate text report
-                                                const filename = `PolicyGuard_Report_${new URL(report.url || "example.com").hostname}_${new Date().toISOString().split('T')[0]}.json`;
-                                                const blob = new Blob([content], { type: 'application/json' });
+                                                const filename = `PolicyGuard_Report_${new URL(report.url || "example.com").hostname}_${new Date()
+                                                    .toISOString()
+                                                    .split("T")[0]}.json`;
+                                                const blob = new Blob([content], { type: "application/json" });
                                                 const url = URL.createObjectURL(blob);
-                                                const a = document.createElement('a');
+                                                const a = document.createElement("a");
                                                 a.href = url;
                                                 a.download = filename;
                                                 document.body.appendChild(a);
@@ -219,9 +214,7 @@ export default function SiteReportModal({
                         <div className="p-6 space-y-6 flex-1 overflow-y-auto">
                             {/* Score */}
                             <div>
-                                <h3 className="text-gray-800 font-medium mb-2">
-                                    Overall Site Score: {score}/100
-                                </h3>
+                                <h3 className="text-gray-800 font-medium mb-2">Overall Site Score: {score}/100</h3>
                                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                                     <div
                                         className={`${barColor} h-2 rounded-full transition-all`}
@@ -243,11 +236,7 @@ export default function SiteReportModal({
                                         <ListChecks className="text-gray-500" size={16} />
                                         <div className="text-xs">
                                             <div className="font-medium">Posts</div>
-                                            <span
-                                                className={`${chipBase} ${toneClass(
-                                                    postsTone(report.siteStructure?.postCount)
-                                                )}`}
-                                            >
+                                            <span className={`${chipBase} ${toneClass(postsTone(report.siteStructure?.postCount))}`}>
                                                 {report.siteStructure?.postCount ?? 0}
                                             </span>
                                         </div>
@@ -259,9 +248,7 @@ export default function SiteReportModal({
                                         <div className="text-xs">
                                             <div className="font-medium">Meta Tags</div>
                                             <span
-                                                className={`${chipBase} ${report.siteStructure?.hasMetaTags
-                                                    ? toneClass("green")
-                                                    : toneClass("red")
+                                                className={`${chipBase} ${report.siteStructure?.hasMetaTags ? toneClass("green") : toneClass("red")
                                                     }`}
                                             >
                                                 {report.siteStructure?.hasMetaTags ? "Present" : "Missing"}
@@ -275,9 +262,7 @@ export default function SiteReportModal({
                                         <div className="text-xs">
                                             <div className="font-medium">Headers</div>
                                             <span
-                                                className={`${chipBase} ${report.siteStructure?.hasGoodHeaders
-                                                    ? toneClass("green")
-                                                    : toneClass("amber")
+                                                className={`${chipBase} ${report.siteStructure?.hasGoodHeaders ? toneClass("green") : toneClass("amber")
                                                     }`}
                                             >
                                                 {report.siteStructure?.hasGoodHeaders ? "Good" : "Weak"}
@@ -290,11 +275,7 @@ export default function SiteReportModal({
                                         <ShieldCheck className="text-gray-500" size={16} />
                                         <div className="text-xs">
                                             <div className="font-medium">Structure</div>
-                                            <span
-                                                className={`${chipBase} ${toneClass(
-                                                    structureTone(structureScore)
-                                                )}`}
-                                            >
+                                            <span className={`${chipBase} ${toneClass(structureTone(structureScore))}`}>
                                                 {structureScore}/100
                                             </span>
                                         </div>
@@ -327,8 +308,7 @@ export default function SiteReportModal({
                                         return (
                                             <span
                                                 key={page} // Key is fine here as 'page' is a unique string
-                                                className={`${chipBase} ${found ? toneClass("green") : toneClass("red")
-                                                    }`}
+                                                className={`${chipBase} ${found ? toneClass("green") : toneClass("red")}`}
                                             >
                                                 {found ? `✅ ${page}` : `❌ ${page}`}
                                             </span>
@@ -349,9 +329,7 @@ export default function SiteReportModal({
                                         <span className="ml-auto text-xs font-medium bg-red-50 text-red-700 px-2 py-0.5 rounded-full">
                                             {report.pagesWithIssues?.length ?? 0}
                                         </span>
-                                        <span className="transition-transform group-open:rotate-180 text-gray-500">
-                                            ▾
-                                        </span>
+                                        <span className="transition-transform group-open:rotate-180 text-gray-500">▾</span>
                                     </summary>
 
                                     {/* CHANGED: Check 'pagesWithIssues' instead of 'pagesWithViolations' */}
@@ -361,25 +339,15 @@ export default function SiteReportModal({
                                                 {/* CHANGED: Map over 'pagesWithIssues' */}
                                                 {report.pagesWithIssues.map((p, i) => {
                                                     // Format the violations array for display using the helper
-                                                    const formattedViolations = (p.violations || [])
-                                                        .map(formatViolation)
-                                                        .filter(Boolean); // Remove any potentially empty strings from formatting
+                                                    const formattedViolations = (p.violations || []).map(formatViolation).filter(Boolean); // Remove any potentially empty strings from formatting
 
                                                     // Generate a stable, unique key for the page item. Prioritize URL, fall back to index.
                                                     // Ensure the URL itself is not empty or undefined before using it as a key.
                                                     const uniqueKey = p.url && p.url.trim() !== "" ? p.url : `page-${i}`;
 
                                                     return (
-                                                        <div
-                                                            key={uniqueKey} // Use the generated unique key
-                                                            className="rounded-lg border border-red-100 bg-red-50 p-3"
-                                                        >
-                                                            <a
-                                                                href={p.url}
-                                                                target="_blank"
-                                                                rel="noreferrer"
-                                                                className="text-red-700 hover:underline break-all font-medium"
-                                                            >
+                                                        <div key={uniqueKey} className="rounded-lg border border-red-100 bg-red-50 p-3">
+                                                            <a href={p.url} target="_blank" rel="noreferrer" className="text-red-700 hover:underline break-all font-medium">
                                                                 {new URL(p.url).pathname} {/* Show path for brevity */}
                                                             </a>
 
@@ -388,10 +356,7 @@ export default function SiteReportModal({
                                                                 <div className="mt-2 flex flex-wrap gap-1">
                                                                     {formattedViolations.map((v, idx) => (
                                                                         // Use index 'idx' as key for inner map, as 'v' (the string) is not a React element
-                                                                        <span
-                                                                            key={idx}
-                                                                            className="text-xs px-2 py-1 rounded-md bg-white border border-gray-200 text-gray-700"
-                                                                        >
+                                                                        <span key={idx} className="text-xs px-2 py-1 rounded-md bg-white border border-gray-200 text-gray-700">
                                                                             {v} {/* Display the formatted string */}
                                                                         </span>
                                                                     ))}
@@ -445,9 +410,7 @@ export default function SiteReportModal({
                                             <span className="ml-auto text-xs font-medium bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full">
                                                 {safeSuggestions.length}
                                             </span>
-                                            <span className="transition-transform group-open:rotate-180 text-gray-500">
-                                                ▾
-                                            </span>
+                                            <span className="transition-transform group-open:rotate-180 text-gray-500">▾</span>
                                         </summary>
                                         <div className="px-4 pb-4">
                                             <ul className="list-disc list-inside text-gray-700 text-xs space-y-1">

@@ -1,22 +1,30 @@
 // app/violations/page.tsx
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion"; // ✅ Added missing imports
 import {
-    FileWarning,
     Trash2,
     Download,
     Eye,
     Globe,
     ShieldCheck,
-    AlertCircle,
-} from "lucide-react";
+} from "lucide-react"; // ✅ Removed unused FileWarning & AlertCircle
 import SiteReportModal from "../components/SiteReportModal";
 
+interface Violation {
+    url: string;
+    score: number;
+    totalViolations: number;
+    scannedAt: string;
+    requiredPages?: {
+        missing?: string[];
+    };
+}
+
 export default function ViolationsPage() {
-    const [violations, setViolations] = useState<any[]>([]);
-    const [selectedReport, setSelectedReport] = useState<any | null>(null);
+    const [violations, setViolations] = useState<Violation[]>([]);
+    const [selectedReport, setSelectedReport] = useState<Violation | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     useEffect(() => {
@@ -63,7 +71,7 @@ export default function ViolationsPage() {
         }
     };
 
-    const openModal = (report: any) => {
+    const openModal = (report: Violation) => {
         setSelectedReport(report);
         setIsModalOpen(true);
     };
@@ -84,7 +92,9 @@ export default function ViolationsPage() {
                             <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
                                 <ShieldCheck className="text-blue-600" size={20} />
                             </div>
-                            <h1 className="text-2xl font-semibold text-gray-900">Policy Reports</h1>
+                            <h1 className="text-2xl font-semibold text-gray-900">
+                                Policy Reports
+                            </h1>
                         </div>
                         <p className="text-gray-500 text-sm">
                             Review compliance and content reports across all scanned websites
@@ -140,7 +150,9 @@ export default function ViolationsPage() {
                                     >
                                         <td colSpan={6} className="py-16 text-gray-400">
                                             <Globe className="mx-auto mb-3" size={32} />
-                                            <p className="text-sm">No scans yet. Run your first check from the Sites page.</p>
+                                            <p className="text-sm">
+                                                No scans yet. Run your first check from the Sites page.
+                                            </p>
                                         </td>
                                     </motion.tr>
                                 ) : (
@@ -166,7 +178,7 @@ export default function ViolationsPage() {
                                                 </a>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                {v.requiredPages?.missing?.length > 0 ? (
+                                                {(v.requiredPages?.missing && v.requiredPages.missing.length > 0) ? (
                                                     <span className="px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
                                                         Missing Pages
                                                     </span>

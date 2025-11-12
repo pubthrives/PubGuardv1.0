@@ -1,7 +1,7 @@
 // app/sites/page.tsx
 "use client";
 
-import React, { useState } from "react";
+import { useState } from "react";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -22,17 +22,17 @@ function saveViolationsToStorage(newResults: any[]) {
 
 export default function SitesPage() {
     const router = useRouter();
-    const [mode, setMode] = useState("single");
-    const [singleUrl, setSingleUrl] = useState("");
-    const [multiUrls, setMultiUrls] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [progress, setProgress] = useState(0);
-    const [status, setStatus] = useState("Ready to scan");
+    const [mode, setMode] = useState<"single" | "multiple">("single");
+    const [singleUrl, setSingleUrl] = useState<string>("");
+    const [multiUrls, setMultiUrls] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(false);
+    const [progress, setProgress] = useState<number>(0);
+    const [status, setStatus] = useState<string>("Ready to scan");
 
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
     // ✅ Single Site Scan
-    async function handleSingleScan() {
+    async function handleSingleScan(): Promise<void> {
         if (!singleUrl.trim() || !singleUrl.startsWith("http")) {
             toast.error("Please enter a valid site URL");
             return;
@@ -62,64 +62,49 @@ export default function SitesPage() {
                 url: singleUrl.trim(),
             });
 
-            // --- IMPROVED SUCCESS/ERROR CHECKING ---
             if (!res.data) {
                 throw new Error("API returned no data.");
             }
             if (res.data.error) {
-                // If the API returns an error object in the response body
                 throw new Error(res.data.message || "API reported an error.");
             }
-            // --- END IMPROVED CHECKING ---
 
             saveViolationsToStorage([res.data]);
             setProgress(100);
             setStatus("Scan complete");
             toast.success(`Scan complete for ${singleUrl}`, { id: "scan" });
 
-            // Redirect to violations page after successful scan
             setTimeout(() => {
                 router.push("/violations");
             }, 1500);
         } catch (err: any) {
-            // --- IMPROVED ERROR LOGGING ---
             console.error("❌ Detailed Scan Error:", err);
-            console.error("❌ Error Name:", err.name);
-            console.error("❌ Error Message:", err.message);
-            console.error("❌ Error Config:", err.config); // Might contain request details
-            console.error("❌ Error Response:", err.response); // The full response object if available
 
             let errorMessage = "Network error or server unreachable.";
 
             if (err.response) {
-                // Server responded with an error status (4xx, 5xx)
-                console.error(`❌ Server responded with status: ${err.response.status}`);
-                console.error(`❌ Response data:`, err.response.data);
-                console.error(`❌ Response headers:`, err.response.headers);
-
-                if (typeof err.response.data === 'object' && err.response.data !== null && err.response.data.message) {
-                    // If the server sent back a structured error with a message
+                if (
+                    typeof err.response.data === "object" &&
+                    err.response.data !== null &&
+                    err.response.data.message
+                ) {
                     errorMessage = `Server Error: ${err.response.data.message} (Status: ${err.response.status})`;
-                } else if (typeof err.response.data === 'string') {
-                    // If the server sent back an error as a plain string
+                } else if (typeof err.response.data === "string") {
                     errorMessage = `Server Error: ${err.response.data} (Status: ${err.response.status})`;
-                } else if (err.response.data && Object.keys(err.response.data).length === 0) {
-                    // If the server sent back an empty object {}
-                    errorMessage = `Server Error: Received empty response body (Status: ${err.response.status}). Check server logs for details.`;
+                } else if (
+                    err.response.data &&
+                    Object.keys(err.response.data).length === 0
+                ) {
+                    errorMessage = `Server Error: Empty response body (Status: ${err.response.status})`;
                 } else {
-                    // Generic server error message
-                    errorMessage = `Server Error: Received status ${err.response.status} from API.`;
+                    errorMessage = `Server Error: Received status ${err.response.status}`;
                 }
             } else if (err.request) {
-                // Request was made but no response received (e.g., network issue, server down)
-                console.error("❌ No response received from server:", err.request);
-                errorMessage = "No response received from the scanner server. Please check your connection or if the server is running.";
+                errorMessage =
+                    "No response received from the scanner server. Please check your connection or if the server is running.";
             } else {
-                // Something else happened while setting up the request
-                console.error("❌ Error during request setup:", err.message);
                 errorMessage = `Request setup failed: ${err.message}`;
             }
-            // --- END IMPROVED ERROR LOGGING ---
 
             toast.error(`Failed: ${errorMessage}`, { id: "scan" });
             setStatus("Scan failed");
@@ -133,11 +118,11 @@ export default function SitesPage() {
     }
 
     // ✅ Multiple Site Scan
-    async function handleMultipleScan() {
+    async function handleMultipleScan(): Promise<void> {
         const urls = multiUrls
             .split("\n")
-            .map((u) => u.trim())
-            .filter((u) => u.startsWith("http"));
+            .map((u: string) => u.trim())
+            .filter((u: string) => u.startsWith("http"));
 
         if (urls.length === 0) {
             toast.error("Please enter at least one valid URL");
@@ -154,27 +139,32 @@ export default function SitesPage() {
             try {
                 const res = await axios.post("/api/scan-site", { url: urls[i] });
 
-                // --- IMPROVED SUCCESS/ERROR CHECKING FOR BATCH ---
                 if (!res.data) {
                     throw new Error("API returned no data for " + urls[i]);
                 }
                 if (res.data.error) {
-                    // If the API returns an error object in the response body for this specific URL
-                    throw new Error(res.data.message || `API reported an error for ${urls[i]}.`);
+                    throw new Error(
+                        res.data.message || `API reported an error for ${urls[i]}.`
+                    );
                 }
-                // --- END IMPROVED CHECKING FOR BATCH ---
 
-                saveViolationsToStorage([res.data]); // Assuming each response is a single site result
+                saveViolationsToStorage([res.data]);
                 toast.success(`Scanned ${urls[i]}`, { id: `batch-${i}` });
             } catch (err: any) {
-                // --- IMPROVED ERROR LOGGING FOR BATCH ---
                 let errorMessage = "Network error or server unreachable.";
                 if (err.response) {
-                    if (typeof err.response.data === 'object' && err.response.data !== null && err.response.data.message) {
+                    if (
+                        typeof err.response.data === "object" &&
+                        err.response.data !== null &&
+                        err.response.data.message
+                    ) {
                         errorMessage = err.response.data.message;
-                    } else if (typeof err.response.data === 'string') {
+                    } else if (typeof err.response.data === "string") {
                         errorMessage = err.response.data;
-                    } else if (err.response.data && Object.keys(err.response.data).length === 0) {
+                    } else if (
+                        err.response.data &&
+                        Object.keys(err.response.data).length === 0
+                    ) {
                         errorMessage = `Empty response body (Status: ${err.response.status})`;
                     } else {
                         errorMessage = `Received status ${err.response.status}`;
@@ -184,7 +174,6 @@ export default function SitesPage() {
                 } else {
                     errorMessage = err.message;
                 }
-                // --- END IMPROVED ERROR LOGGING FOR BATCH ---
 
                 console.warn(`⚠️ Skipped ${urls[i]}: ${errorMessage}`);
                 toast.error(`Failed ${urls[i]}`, { id: `batch-${i}` });
@@ -199,7 +188,6 @@ export default function SitesPage() {
         setStatus("Batch scan complete");
         setMultiUrls("");
 
-        // Redirect to violations page after successful batch scan
         setTimeout(() => {
             router.push("/violations");
         }, 1500);
@@ -220,7 +208,9 @@ export default function SitesPage() {
                         <Globe className="text-blue-600" size={24} />
                     </div>
                     <h1 className="text-3xl font-semibold text-gray-900">PubGuard</h1>
-                    <p className="text-gray-500 mt-2">AI-powered website compliance scanner</p>
+                    <p className="text-gray-500 mt-2">
+                        AI-powered website compliance scanner
+                    </p>
                 </motion.div>
 
                 {/* Tabs */}
@@ -230,7 +220,7 @@ export default function SitesPage() {
                             <motion.button
                                 key={m}
                                 whileTap={{ scale: 0.98 }}
-                                onClick={() => setMode(m)}
+                                onClick={() => setMode(m as "single" | "multiple")}
                                 className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m
                                     ? "bg-white text-gray-900 shadow-sm"
                                     : "text-gray-600 hover:text-gray-900"
@@ -252,7 +242,7 @@ export default function SitesPage() {
                         <div className="flex gap-3">
                             <input
                                 type="text"
-                                placeholder="https://example.com  "
+                                placeholder="https://example.com"
                                 value={singleUrl}
                                 onChange={(e) => setSingleUrl(e.target.value)}
                                 className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"
@@ -312,7 +302,7 @@ export default function SitesPage() {
                     >
                         <textarea
                             rows={5}
-                            placeholder="Enter one URL per line&#10;https://example1.com  &#10;https://example2.com  "
+                            placeholder="Enter one URL per line&#10;https://example1.com&#10;https://example2.com"
                             value={multiUrls}
                             onChange={(e) => setMultiUrls(e.target.value)}
                             className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition mb-4"
