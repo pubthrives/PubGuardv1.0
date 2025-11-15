@@ -68,7 +68,7 @@ function extractLinks(html: string, baseUrl: string): string[] {
   return Array.from(links);
 }
 
-/* ----------- SMART POST FILTER (FIXED - Less Aggressive, Include Tools) ----------- */
+/* ----------- SMART POST FILTER (REFINED - More Accurate) ----------- */
 function isLikelyPostUrl(url: string): boolean {
   const u = url.toLowerCase();
   const urlObj = new URL(u);
@@ -77,7 +77,7 @@ function isLikelyPostUrl(url: string): boolean {
 
   // Remove fragment/anchor from URL for comparison
   const cleanUrl = u.split('#')[0];
-  
+
   // ❌ skip URLs with fragments (they're duplicates of the main page)
   if (urlObj.hash) {
     console.log(`❌ Skipping fragment URL: ${u}`);
@@ -99,54 +99,91 @@ function isLikelyPostUrl(url: string): boolean {
     'instagram-downloader', 'tiktok-downloader', 'youtube-downloader', 'facebook-downloader',
     'soundcloud-downloader', 'twitch-downloader', 'pinterest-downloader'
   ];
-  
+
   // Check if any tool keyword appears in the path segments or the full path
   if (toolKeywords.some(keyword => path.includes(keyword))) {
     console.log(`🔍 Identified as POTENTIAL TOOL/DOWNLOAD URL (will analyze): ${u}`);
     return true; // Return TRUE to ensure these are analyzed, overriding other filters
   }
 
-  // ❌ skip obvious category/archive pages (excluding /downloader/ now via keyword check above)
+  // ❌ Define obvious category/archive/search patterns MORE SPECIFICALLY
+  // This is more targeted than the previous large regex
   const obviousCategoryPatterns = [
-    // Keep all your existing patterns, but REMOVED /\/(downloader|...)/
-    /\/(category|tag|author|feed|search|wp-json|archive|tools|tool|blog|news|events|products|services|portfolio|projects|members|groups|forums|topics|threads|comments|reviews|testimonials|faq|support|help|docs|documentation|tutorials|guides|resources|media|galleries|photos|images|videos|audio|music|files|attachments|uploads|admin|login|register|signup|cart|checkout|shop|store|pricing|plans|packages|deals|offers|promotions|campaigns|banners|ads|advertising|sponsors|partners|affiliates|referrals|tracking|stats|statistics|analytics|reports|dashboards|control|control-panel|settings|preferences|profile|account|user|users|members|dashboard|admin-panel|wp-admin|wp-content|wp-includes|cgi-bin|bin|includes|inc|lib|libraries|modules|plugins|themes|templates|layouts|designs|styles|css|js|javascript|scripts|api|json|xml|rss|atom|sitemap|robots|favicon|apple-touch-icon|manifest|browserconfig|humans|readme|license|copyright|trademark|patent|privacy-policy|terms-of-service|tos|eula|end-user-license-agreement|disclaimer|refund-policy|return-policy|shipping-policy|delivery-policy|warranty|guarantee|money-back|moneyback|satisfaction|security|ssl|tls|encryption|certificate|cert|keys|key|token|access|password|pass|login|signin|sign-in|sign_up|signup|register|registration|subscribe|subscription|newsletter|mailing|mail|email|e-mail|contact-us|contactus|contact_form|form|feedback|support|help|ticket|issue|bug|report|complaint|claim|request|inquiry|question|faq|frequently-asked-questions|about-us|aboutus|about|company|team|staff|employees|careers|jobs|employment|work|hire|recruitment|apply|application|resume|cv|portfolio|projects|services|solutions|products|features|benefits|advantages|pros|cons|comparison|vs|versus|alternative|alternatives|review|reviews|rating|ratings|testimonials|testimony|testimonial|recommendation|recommendations|endorsement|endorsements|praise|praises|award|awards|certification|certifications|license|licenses|accreditation|accreditations|membership|memberships|subscription|subscriptions|pricing|price|cost|fee|fees|charge|charges|payment|payments|billing|invoice|receipt|order|orders|purchase|purchases|buy|sell|sale|sales|transaction|transactions|deal|deals|offer|offers|discount|discounts|coupon|coupons|promo|promos|promotion|promotions|campaign|campaigns|marketing|ad|ads|advertisement|advertisements|banner|banners|sponsor|sponsors|partner|partners|affiliate|affiliates|referral|referrals|tracking|track|analytics|stats|statistics|report|reports|dashboard|dashboards|control|controls|setting|settings|preference|preferences|profile|profiles|account|accounts|user|users|member|members|dashboard|admin|signin|sign|apply|award|benefit|cart|certificate|charge|checkout|claim|comment|compare|complaint|compliance|confirm|confirmation|contact|content|contract|contribute|contributor|control|copyright|cost|coupon|create|credit|css|currency|current|custom|customer|customize|cv|data|database|date|day|deactivate|deal|debug|default|delete|deliver|delivery|demo|department|deploy|deposit|design|destroy|detail|developer|development|device|diagnostic|diagram|dialog|dictionary|difference|directory|disable|discuss|discussion|disk|display|document|documentation|domain|donate|donation|download|draft|edit|editor|effect|email|employee|employment|enable|encrypt|encryption|end|engine|enterprise|entry|environment|error|event|example|exchange|execute|exit|experience|export|external|factory|faq|feature|feed|feedback|file|filter|find|fix|flash|folder|font|footer|form|format|forum|forward|framework|free|frequency|friend|ftp|function|fund|gallery|game|gateway|general|generate|generator|get|gift|global|goal|google|govern|governance|group|guide|gzip|header|help|history|home|host|hosting|hour|html|icon|id|idea|identify|identity|image|import|inbox|index|industry|info|information|input|insert|install|instance|institute|instruction|instrument|insurance|integration|interface|internet|interval|intro|introduct|inventory|invite|invoice|ip|issue|item|java|javascript|job|join|journal|js|json|jump|key|keyboard|keyword|label|language|launch|law|layer|layout|leader|lead|learn|legal|level|license|limit|line|link|list|load|local|location|lock|log|login|logo|logout|logotype|main|manage|manager|manual|map|market|master|match|max|maximum|media|member|memory|menu|merge|message|meta|metadata|method|min|minimum|minute|mirror|mobile|mode|model|module|monitor|month|more|move|multi|music|name|navigate|navigation|network|new|news|newsletter|next|no|node|note|notification|notify|number|object|offer|office|offline|offset|online|open|operation|option|order|organization|organize|origin|output|overview|owner|package|page|pagination|panel|paper|paragraph|parent|part|partner|party|pass|password|paste|patch|path|payment|pdf|peer|pending|people|percent|period|permission|permit|person|personal|phone|photo|php|physical|pin|ping|pixel|plan|platform|play|plugin|policy|poll|pop|popular|popup|portal|post|power|preference|premium|present|presentation|preview|previous|price|primary|print|privacy|private|process|processor|product|production|profile|program|progress|project|promo|promotion|protocol|provider|proxy|public|publish|pull|purchase|push|quality|quantity|query|question|queue|quick|quote|radio|random|range|rank|rate|rating|read|reader|reading|ready|real|rebuild|receive|recent|recommend|record|recover|recovery|recruit|recruitment|redirect|reduce|reference|refund|refuse|regenerate|region|register|registration|regular|reject|relation|relationship|release|reload|remove|rename|render|renew|repair|repeat|replace|reply|report|repository|request|require|requirement|rescue|research|reset|resize|resolution|resolve|resource|response|restore|result|resume|retire|return|reverse|review|revoke|right|role|root|route|router|rule|run|safe|sale|sample|save|scale|scan|schedule|schema|scope|score|screen|script|scroll|search|second|section|security|select|self|sell|send|sent|sequence|serial|server|service|session|set|setting|setup|share|shell|shift|shop|show|shutdown|sign|signal|signature|signup|sim|simulation|single|site|size|skill|slide|slot|sms|social|software|solution|sort|source|space|spam|spec|special|specific|specification|speed|spell|spelling|split|sponsor|sport|sql|src|ssl|staff|stage|standard|start|state|static|station|statistic|status|stop|storage|store|stream|string|structure|style|stylesheet|sub|subject|submit|subscribe|subscription|subscript|success|suggest|summary|support|suspend|swap|switch|symbol|sync|synchronize|syntax|system|tab|table|tag|target|task|team|tech|tele|telephone|template|term|terminal|test|text|theme|thread|time|tip|title|tls|to|today|toggle|token|tool|top|topic|total|tour|track|trade|traffic|transaction|transfer|transform|transition|translate|transport|trash|tree|trigger|type|ui|unban|undo|uninstall|union|unit|unlimit|unlock|unmark|unpin|unpublish|unquote|unregister|unrestrict|unsubscribe|unwatch|update|upgrade|upload|url|usage|use|user|username|utility|validate|validation|value|variable|variant|version|video|view|viewer|virtual|virus|visit|visitor|volume|vote|vpn|watch|web|website|week|welcome|widget|wifi|wiki|window|wireless|word|work|worker|workflow|workplace|workspace|world|write|writer|writing|www|xml|year|yes|zip)/,
-    /\/page\/\d+/,
+    /\/search\//, // Matches /search/, /search/label/, etc.
+    /\/category\//,
+    /\/tag\//,
+    /\/author\//,
+    /\/archive\//,
     /\/feed$/,
+    /\/wp-json\//,
+    /\/wp-content\//,
+    /\/wp-includes\//,
+    /\/admin\//,
+    /\/login/,
+    /\/register/,
+    /\/signup/,
+    /\/cart/,
+    /\/checkout/,
+    /\/shop/,
+    /\/store/,
+    /\/products/,
+    /\/services/,
+    /\/about/,
+    /\/contact/,
+    /\/privacy/,
+    /\/terms/,
+    /\/disclaimer/,
+    /\/page\/\d+/, // Pagination
+    /\/\d{4}\/$/, // Year directory (if ends with slash)
+    /\/\d{4}\/\d{2}\/$/, // Year/Month directory (if ends with slash)
+    // Add more specific patterns as needed based on your site's structure
   ];
-  
-  // Check if URL matches any obvious category pattern (excluding downloader patterns now)
+
+  // Check if URL matches any obvious category pattern
   if (obviousCategoryPatterns.some(pattern => pattern.test(cleanUrl))) {
     console.log(`❌ Skipping obvious category URL: ${u}`);
     return false; // Return FALSE to skip
   }
 
   // ✅ ACCEPT URLs that look like actual content posts:
-  // - Has meaningful segments (not just numbers)
-  // - Doesn't match general category patterns (downloader handled above)
-  // - Has descriptive slugs
-  
-  if (segments.length >= 1) {
+  // - Pattern: /YYYY/MM/description.html (typical blog post structure)
+  // Example: /2025/11/how-to-attract-and-retain-talent.html
+  const postPattern = /^\/\d{4}\/\d{2}\/.*\.html$/;
+  if (postPattern.test(path)) {
+     console.log(`✅ Identified as CONTENT POST (YYYY/MM/description.html): ${u}`);
+     return true;
+  }
+
+  // ✅ ACCEPT URLs that look like static content pages if they are not caught by the above
+  // This is a fallback for pages like /about/, /contact/ if they were missed by category patterns
+  // and if they are not in the required pages list.
+  if (segments.length === 1 && !REQUIRED_PAGES.includes(segments[0])) {
+      // Example: /about-us/, /services/, etc.
+      // Add logic here if you want to be more specific about static pages
+      // For now, let's assume single-segment paths other than required ones are content
+      // if they pass the category filter above.
+      // A more robust check might involve checking content length or structure later.
+      console.log(`✅ Potential static content page (fallback): ${u}`);
+      return true;
+  }
+
+  // ✅ Accept other URLs that passed the category filter and have descriptive last segments
+  // This helps catch posts that might not strictly follow the /YYYY/MM/description.html pattern
+  // but are likely content.
+  if (segments.length >= 2) { // At least /something/something/
     const lastSegment = segments[segments.length - 1];
-    
-    // Accept URLs with descriptive slugs (excluding those caught by toolKeywords above)
+    // Check if the last segment looks like a slug (not just numbers, not a date part, not empty)
     if (lastSegment.length > 4 && 
         !/^\d+$/.test(lastSegment) && 
-        !/^(page|category|tag)$/.test(lastSegment)) {
-      console.log(`✅ Identified as CONTENT POST: ${u}`);
+        !/^(page|category|tag|feed|wp-json|admin|login|register|signup|cart|checkout|shop|store)$/.test(lastSegment) &&
+        !/\.(html|htm|php|asp|jsp|aspx)$/.test(lastSegment) // Exclude common file extensions if not already handled by fetch
+        ) {
+      console.log(`✅ Identified as CONTENT POST (descriptive slug): ${u}`);
       return true;
-    }
-    
-    // Also accept URLs that end with / but have descriptive names (common in WordPress)
-    if (path.endsWith('/') && segments.length >= 1) {
-      // const secondLastSegment = segments.length >= 2 ? segments[segments.length - 2] : '';
-      if (lastSegment.length > 4 && !/^\d+$/.test(lastSegment)) {
-        console.log(`✅ Identified as CONTENT POST (directory-style): ${u}`);
-        return true;
-      }
     }
   }
 
-  console.log(`❌ Not a content post URL: ${u}`);
+  console.log(`❌ Not a content post URL (did not match accepted patterns): ${u}`);
   return false;
 }
 
@@ -184,11 +221,11 @@ function isSafeContent(text: string, urlPath: string): boolean {
   }
 
   const safeKeywords = [
-    "how to", "tutorial", "guide", "tips", "review", "best", "top", 
+    "how to", "tutorial", "guide", "tips", "review", "best", "top",
     "education", "learning", "news", "updates", "opinion", "analysis",
     "recipe", "cooking", "travel", "lifestyle", "fitness", "health"
   ];
-  
+
   const dangerKeywords = [
     "casino", "betting", "gamble", "porn", "sex", "scam", "fake download",
     "lottery", "win money", "get rich", "miracle cure", "hack", "crack",
@@ -196,19 +233,19 @@ function isSafeContent(text: string, urlPath: string): boolean {
   ];
 
   const lower = text.toLowerCase();
-  
+
   // If danger keywords found, analyze it
   if (dangerKeywords.some(kw => lower.includes(kw))) {
     console.log("🔍 Danger keywords found, will analyze");
     return false;
   }
-  
+
   // If safe keywords found, skip analysis (only if not a tool page)
   if (safeKeywords.some(kw => lower.includes(kw))) {
     console.log("✅ Safe keywords found, skipping analysis");
     return true;
   }
-  
+
   console.log("⚠️ No clear safe/danger keywords, will analyze");
   return false;
 }
@@ -268,7 +305,7 @@ function checkForDuplicateContent(content: string, existingContent: string[]): b
 function detectClearViolations($: cheerio.Root, url: string): any[] {// ✅ Use the imported type alias
   console.log(`🔎 Checking for CLEAR violations on: ${url}`);
   const violations: any[] = [];
-  
+
   // ONLY check for CLEAR, OBVIOUS violations
   const clearViolationPhrases = [
     "cracked software",
@@ -291,7 +328,7 @@ function detectClearViolations($: cheerio.Root, url: string): any[] {// ✅ Use 
     "doorway page",
     "excessive ads"
   ];
-  
+
   const pageText = $('body').text().toLowerCase();
   clearViolationPhrases.forEach(phrase => {
     if (pageText.includes(phrase)) {
@@ -303,7 +340,7 @@ function detectClearViolations($: cheerio.Root, url: string): any[] {// ✅ Use 
       console.log(`🚨 Clear violation found: ${phrase}`);
     }
   });
-  
+
   // Check for explicit download links to ILLEGAL content
   const illegalDownloadSelectors = [
     'a[href*="crack"]',
@@ -311,15 +348,15 @@ function detectClearViolations($: cheerio.Root, url: string): any[] {// ✅ Use 
     'a:contains("Cracked")',
     'a:contains("Torrent")'
   ];
-  
+
   illegalDownloadSelectors.forEach(selector => {
     $(selector).each((_, el) => {
       const element = $(el);
       const text = element.text().toLowerCase();
       const href = element.attr('href') || '';
-      
+
       // Only flag if it's clearly illegal content
-      if ((text.includes('crack') || text.includes('torrent')) && 
+      if ((text.includes('crack') || text.includes('torrent')) &&
           (text.includes('software') || text.includes('game') || text.includes('movie'))) {
         violations.push({
           type: "Copyright",
@@ -365,7 +402,7 @@ function detectClearViolations($: cheerio.Root, url: string): any[] {// ✅ Use 
     });
     console.log(`🚨 High ad density detected: ${adElements} elements`);
   }
-  
+
   console.log(`🔎 Clear violations check complete. Found: ${violations.length}`);
   return violations;
 }
@@ -513,11 +550,11 @@ Example violations:
 export async function POST(req: Request) {
   const startTime = Date.now();
   console.log("🚀 Starting scan process");
-  
+
   try {
     const { url } = await req.json();
     console.log(`🎯 Target URL: ${url}`);
-    
+
     if (!url) {
       console.error("❌ URL required");
       return NextResponse.json({ error: "URL required" }, { status: 400 });
@@ -556,12 +593,12 @@ export async function POST(req: Request) {
     await Promise.all(crawlPromises);
     console.log(`🕸️ Crawling complete. Total unique pages: ${crawled.size}`);
 
-    // ✅ Filter for CONTENT post URLs - SMART FILTERING
+    // ✅ Filter for CONTENT post URLs - SMART FILTERING (Updated function)
     const posts = Array.from(crawled)
       .filter(isLikelyPostUrl)
       // Remove fragment duplicates by using base URL only
       .map(postUrl => postUrl.split('#')[0]);
-    
+
     const uniquePosts = Array.from(new Set(posts));
     const totalPosts = uniquePosts.length;
     const postsToScan = uniquePosts;
@@ -574,23 +611,23 @@ export async function POST(req: Request) {
     const hasMetaTags = $("meta[name='description']").length > 0;
     const hasGoodHeaders = homepageQuality.hasProperHeadings; // Use quality check result
     const homepageStructureIssues = homepageQuality.issues;
-    
+
     // ✅ Extract full context for homepage
     const title = $("title").text().trim();
     const h1 = $("h1").first().text().trim();
     const metaDesc = $("meta[name='description']").attr("content") || "";
     const bodyText = $("body").text().replace(/\s+/g, " ").slice(0, 16000);
-    
+
     const homepageContext = `
 TITLE: ${title}
 H1: ${h1}
 META: ${metaDesc}
 CONTENT: ${bodyText}
 `.slice(0, 16000);
-    
+
     console.log("🏠 Analyzing homepage...");
     const homepageAI = await analyzeTextWithAI(homepageContext, url, "Homepage content analysis");
-    
+
     // Detect CLEAR violations on homepage
     const homepageViolations = detectClearViolations($, url);
     if (homepageViolations.length > 0) {
@@ -621,11 +658,11 @@ CONTENT: ${bodyText}
               console.log(`❌ Failed to fetch: ${p}`);
               return;
             }
-            
+
             const $post = cheerio.load(html); // Load post HTML with cheerio
             // Analyze content quality for this post
             const postQuality = analyzeContentQuality($post, p);
-            
+
             // ✅ Extract full context for posts
             const title = $post("title").text().trim();
             const h1 = $post("h1").first().text().trim();
@@ -634,7 +671,7 @@ CONTENT: ${bodyText}
               .text()
               .replace(/\s+/g, " ")
               .trim();
-              
+
             const fullContext = `
 TITLE: ${title}
 H1: ${h1}
@@ -667,10 +704,10 @@ CONTENT: ${bodyText}
 
             // Analyze content with AI (using the function defined above, passing the client instance)
             const ai = await analyzeTextWithAI(fullContext, p, "Content post analysis");
-            
+
             // Detect CLEAR violations on each post
             const clearViolations = detectClearViolations($post, p);
-            
+
             // ONLY combine violations if there are ACTUALLY violations
             if (clearViolations.length > 0) {
               // Combine violations and update summary only if there were violations
@@ -722,7 +759,7 @@ CONTENT: ${bodyText}
 
     /* ---------- Scoring ---------- */
     let score = 100;
-    
+
     // Harsher penalties
     score -= totalViolations * 5; // -5 per violation
     score -= missing.length * 5; // -5 per missing page
@@ -777,7 +814,7 @@ CONTENT: ${bodyText}
     const endTime = Date.now();
     console.log(`✅ Scan complete for ${url}: ${totalPosts} CONTENT posts, ${totalViolations} issues, score ${score}/100`);
     console.log(`⏱️ Total scan time: ${endTime - startTime}ms`);
-    
+
     return NextResponse.json(result);
   } catch (err: any) {
     console.error("🚨 Fatal scan error:", err.message);
@@ -802,8 +839,8 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json({ 
-    status: "OK", 
+  return NextResponse.json({
+    status: "OK",
     hasOpenAIKey: hasKey,
     timestamp: new Date().toISOString(),
     service: "PolicyGuard API"
