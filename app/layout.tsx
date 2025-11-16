@@ -121,6 +121,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <li><NavItem href="/" icon={<Home size={18} />}>Overview</NavItem></li>
               <li><NavItem href="/sites" icon={<Globe size={18} />}>Sites</NavItem></li>
               <li><NavItem href="/violations" icon={<AlertTriangle size={18} />}>Violations</NavItem></li>
+              {/* 👇 New IVT Blocker Option */}
+              <li><NavItem href="/ivt-blocker" icon={<Shield size={18} />}>IVT Blocker</NavItem></li>
               <li><NavItem href="/grant-access" icon={<User size={18} />}>Grant Access</NavItem></li>
               <li><NavItem href="/settings" icon={<Settings size={18} />}>Settings</NavItem></li>
             </ul>
