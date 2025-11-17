@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 
 const LOCAL_KEY = "guardian_violations";
 
-// -------------------- TYPES --------------------
+/* -------------------- TYPES -------------------- */
 export interface ViolationResult {
     url: string;
     scannedAt?: string;
@@ -24,7 +24,17 @@ interface ApiError {
     [key: string]: unknown;
 }
 
-// -------------------- STORAGE FUNCTION --------------------
+/* -------------------- TYPE GUARD -------------------- */
+function isApiError(data: unknown): data is ApiError {
+    return (
+        typeof data === "object" &&
+        data !== null &&
+        "message" in data &&
+        typeof (data as any).message === "string"
+    );
+}
+
+/* -------------------- STORAGE FUNCTION -------------------- */
 function saveViolationsToStorage(newResults: ViolationResult[]) {
     const existingRaw = localStorage.getItem(LOCAL_KEY);
     const existing: ViolationResult[] = existingRaw ? JSON.parse(existingRaw) : [];
@@ -40,9 +50,10 @@ function saveViolationsToStorage(newResults: ViolationResult[]) {
     return updated;
 }
 
-// -------------------- COMPONENT --------------------
+/* -------------------- COMPONENT -------------------- */
 export default function SitesPage() {
     const router = useRouter();
+
     const [mode, setMode] = useState<"single" | "multiple">("single");
     const [singleUrl, setSingleUrl] = useState("");
     const [multiUrls, setMultiUrls] = useState("");
@@ -52,7 +63,7 @@ export default function SitesPage() {
 
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-    // -------------------- SINGLE SITE SCAN --------------------
+    /* -------------------- SINGLE SITE SCAN -------------------- */
     async function handleSingleScan(): Promise<void> {
         if (!singleUrl.trim() || !singleUrl.startsWith("http")) {
             toast.error("Please enter a valid site URL");
@@ -70,7 +81,7 @@ export default function SitesPage() {
                 "Analyzing structure...",
                 "Running AI audit...",
                 "Evaluating compliance...",
-                "Finalizing report...",
+                "Finalizing report..."
             ];
 
             for (let i = 0; i < updateSteps.length; i++) {
@@ -83,12 +94,16 @@ export default function SitesPage() {
                 url: singleUrl.trim(),
             });
 
+            // API returned nothing
             if (!res.data) throw new Error("API returned no data.");
-            if ((res.data as ApiError).message) {
-                throw new Error((res.data as ApiError).message);
+
+            // API returned an error object
+            if (isApiError(res.data)) {
+                throw new Error(res.data.message || "Unknown API error");
             }
 
             saveViolationsToStorage([res.data]);
+
             setProgress(100);
             setStatus("Scan complete");
             toast.success(`Scan complete for ${singleUrl}`, { id: "scan" });
@@ -124,7 +139,7 @@ export default function SitesPage() {
         }
     }
 
-    // -------------------- MULTIPLE SITE SCAN --------------------
+    /* -------------------- MULTIPLE SITE SCAN -------------------- */
     async function handleMultipleScan(): Promise<void> {
         const urls = multiUrls
             .split("\n")
@@ -148,17 +163,16 @@ export default function SitesPage() {
                     url: urls[i],
                 });
 
-                if (!res.data) throw new Error("API returned no data");
-                saveViolationsToStorage([res.data]);
-
-                toast.success(`Scanned ${urls[i]}`, { id: `batch-${i}` });
+                if (isApiError(res.data)) {
+                    console.warn(`Skipped ${urls[i]}: ${res.data.message}`);
+                    toast.error(`Failed ${urls[i]}`, { id: `batch-${i}` });
+                } else {
+                    saveViolationsToStorage([res.data]);
+                    toast.success(`Scanned ${urls[i]}`, { id: `batch-${i}` });
+                }
             } catch (err) {
                 const error = err as AxiosError<ApiError>;
-                let msg = "Network error";
-
-                if (error.response?.data?.message) {
-                    msg = error.response.data.message;
-                }
+                let msg = error.response?.data?.message || "Network error";
 
                 console.warn(`Skipped ${urls[i]}: ${msg}`);
                 toast.error(`Failed ${urls[i]}`, { id: `batch-${i}` });
@@ -176,7 +190,7 @@ export default function SitesPage() {
         setTimeout(() => router.push("/violations"), 1500);
     }
 
-    // -------------------- UI --------------------
+    /* -------------------- UI -------------------- */
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <Toaster position="top-right" />
@@ -210,7 +224,11 @@ export default function SitesPage() {
 
                 {/* Single Site Scan */}
                 {mode === "single" && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+                    >
                         <div className="flex gap-3">
                             <input
                                 type="text"
@@ -240,13 +258,22 @@ export default function SitesPage() {
                         {/* Progress */}
                         <AnimatePresence>
                             {loading && (
-                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-6">
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: "auto" }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    className="mt-6"
+                                >
                                     <div className="flex justify-between text-xs text-gray-500 mb-2">
                                         <span>{status}</span>
                                         <span>{progress}%</span>
                                     </div>
                                     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <motion.div initial={{ width: "0%" }} animate={{ width: `${progress}%` }} className="h-full bg-blue-500 rounded-full" />
+                                        <motion.div
+                                            initial={{ width: "0%" }}
+                                            animate={{ width: `${progress}%` }}
+                                            className="h-full bg-blue-500 rounded-full"
+                                        />
                                     </div>
                                 </motion.div>
                             )}
@@ -254,9 +281,13 @@ export default function SitesPage() {
                     </motion.div>
                 )}
 
-                {/* Multiple Site Scan */}
+                {/* Multiple Sites */}
                 {mode === "multiple" && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+                    >
                         <textarea
                             rows={5}
                             placeholder="Enter one URL per line&#10;https://example1.com&#10;https://example2.com"
@@ -265,6 +296,7 @@ export default function SitesPage() {
                             className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition mb-4"
                             disabled={loading}
                         />
+
                         <motion.button
                             whileTap={{ scale: 0.98 }}
                             onClick={handleMultipleScan}
@@ -272,7 +304,13 @@ export default function SitesPage() {
                             className={`w-full py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${loading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
                                 }`}
                         >
-                            {loading ? <Loader2 className="animate-spin" size={16} /> : (<><Shield size={16} /> Scan All Sites</>)}
+                            {loading ? (
+                                <Loader2 className="animate-spin" size={16} />
+                            ) : (
+                                <>
+                                    <Shield size={16} /> Scan All Sites
+                                </>
+                            )}
                         </motion.button>
                     </motion.div>
                 )}

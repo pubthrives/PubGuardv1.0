@@ -18,7 +18,7 @@ function getOpenAIClient() {
   if (!OPENAI_KEY) return null;
   try {
     return new OpenAI({ apiKey: OPENAI_KEY });
-  } catch (e) {
+  } catch (e: unknown) {
     console.error("OpenAI init failed:", e);
     return null;
   }
@@ -28,6 +28,14 @@ interface AIViolation {
   type: string;
   excerpt: string;
   confidence: number;
+}
+
+interface PageIssue {
+  url: string;
+  violations: AIViolation[];
+  suggestions?: string[];
+  summary: string;
+  qualityIssues?: string[];
 }
 
 /* ----------------- UTIL: Logging helpers ----------------- */
@@ -42,6 +50,15 @@ function warn(...args: unknown[]) {
 }
 function errorLog(...args: unknown[]) {
   console.error("[ERROR]", now(), ...args);
+}
+
+function getErrorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  if (typeof err === "string") return err;
+  if (typeof err === "object" && err !== null && "message" in err) {
+    return String((err as any).message);
+  }
+  return String(err);
 }
 
 /* ---------------- HELPERS ---------------- */
@@ -70,7 +87,8 @@ async function fetchHTML(url: string): Promise<string> {
     info(`Fetched ${url} (${html.length} chars)`);
     return html;
   } catch (err: unknown) {
-    warn(`Failed to fetch ${url}:`, err?.message || err);
+    const message = getErrorMessage(err);
+    warn(`Failed to fetch ${url}: ${message}`);
     return "";
   }
 }
@@ -95,7 +113,7 @@ function extractLinks(html: string, baseUrl: string): string[] {
       if (full.includes("?replytocom=")) return;
 
       links.add(full);
-    } catch (e) {}
+    } catch {}
   });
 
   info(`Extracted ${links.size} links from ${baseUrl}`);
@@ -191,7 +209,7 @@ function isLikelyPostUrl(url: string): boolean {
 
     // Default: not a content post
     return false;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -231,7 +249,7 @@ function isSafeContent(text: string, urlPath: string): boolean {
   return false;
 }
 
-function analyzeContentQuality($: cheerio.Root, url: string) {
+function analyzeContentQuality($: cheerio.Root) {
   const body = $("main, article, .post-content, .entry-content, .content, .post-body, body").text() || "";
   const words = body.trim().split(/\s+/).filter(Boolean).length;
   const issues: string[] = [];
@@ -267,7 +285,11 @@ function checkForDuplicateContent(content: string, existing: string[]): boolean 
 
 /* ---------------- CLEAR VIOLATION DETECTION ---------------- */
 
-function detectClearViolations($: cheerio.Root, url: string): { type: string; excerpt: string; confidence: number }[] {
+function detectClearViolations($: cheerio.Root): {
+  type: string;
+  excerpt: string;
+  confidence: number;
+}[] {
   const violations: { type: string; excerpt: string; confidence: number }[] = [];
   const bodyText = $("body").text().toLowerCase();
 
@@ -381,7 +403,7 @@ Be conservative and ONLY flag clear violations.
 
     return parsed;
   } catch (err: unknown) {
-    errorLog("AI analysis failed for", url, err?.message || err);
+    errorLog("AI analysis failed for", url, getErrorMessage(err));
     return { violations: [], summary: "AI error", suggestions: [] };
   }
 }
@@ -396,7 +418,7 @@ async function scanSite(url: string) {
 
   try {
     new URL(url);
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid URL" }, { status: 400 });
   }
 
@@ -431,8 +453,8 @@ async function scanSite(url: string) {
 
   // Analyze homepage (only for structure, not policy/dupes)
   const $home = cheerio.load(homepageHtml);
-  const homepageQuality = analyzeContentQuality($home, url);
-  const homepageViolations = detectClearViolations($home, url);
+  const homepageQuality = analyzeContentQuality($home);
+  const homepageViolations = detectClearViolations($home);
   const homepageTitle = $home("title").text().trim();
   const homepageH1 = $home("h1").first().text().trim();
   const homepageMeta = $home("meta[name='description']").attr("content") || "";
@@ -461,8 +483,8 @@ async function scanSite(url: string) {
       if (!html) return;
 
       const $p = cheerio.load(html);
-      const quality = analyzeContentQuality($p, p);
-      const clear = detectClearViolations($p, p);
+      const quality = analyzeContentQuality($p);
+      const clear = detectClearViolations($p);
 
       const bodyText = $p("main, article, .post-content, .entry-content, .content, .post-body")
         .text()
@@ -581,13 +603,20 @@ async function scanSite(url: string) {
 async function verifyScript(url: string) {
   info("Verifying script presence for:", url);
   try {
-    const res = await fetch(url, { method: "GET", headers: { "User-Agent": "PolicyGuard/1.0" } });
-    const html = await res.text();
-    const found = html.includes("bootbot") || html.includes("cdn.bardnative.com/bootbot") || html.includes("bardnative.com/bootbot");
+    const res = await axios.get(url, {
+      headers: { "User-Agent": "PolicyGuard/1.0" },
+      timeout: FETCH_TIMEOUT,
+      httpsAgent: new https.Agent({ rejectUnauthorized: false }),
+    });
+    const html = res.data;
+    const found = html.includes("bootbot") || 
+                 html.includes("cdn.bardnative.com/bootbot") || 
+                 html.includes("bardnative.com/bootbot");
     return NextResponse.json({ found, url });
   } catch (err: unknown) {
-    errorLog("Verification failed:", err?.message || err);
-    return NextResponse.json({ error: "Verification failed", message: err?.message || String(err) }, { status: 500 });
+    const message = getErrorMessage(err);
+    errorLog("Verification failed:", message);
+    return NextResponse.json({ error: "Verification failed", message }, { status: 500 });
   }
 }
 
@@ -611,8 +640,9 @@ export async function POST(request: NextRequest) {
 
     return await scanSite(url);
   } catch (err: unknown) {
-    errorLog("POST handler error:", err?.message || err);
-    return NextResponse.json({ error: "Internal server error", message: err?.message || String(err) }, { status: 500 });
+    const message = getErrorMessage(err);
+    errorLog("POST handler error:", message);
+    return NextResponse.json({ error: "Internal server error", message }, { status: 500 });
   }
 }
 
@@ -623,7 +653,7 @@ export async function GET() {
     try {
       const client = getOpenAIClient();
       if (client) openaiOk = true;
-    } catch (e) {
+    } catch {
       openaiOk = false;
     }
   }
