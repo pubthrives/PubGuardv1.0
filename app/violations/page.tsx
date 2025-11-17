@@ -2,14 +2,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion"; // ✅ Added missing imports
-import {
-    Trash2,
-    Download,
-    Eye,
-    Globe,
-    ShieldCheck,
-} from "lucide-react"; // ✅ Removed unused FileWarning & AlertCircle
+import { motion, AnimatePresence } from "framer-motion";
+import { Trash2, Download, Eye, Globe, ShieldCheck } from "lucide-react";
 import SiteReportModal from "../components/SiteReportModal";
 
 interface Violation {
@@ -23,13 +17,25 @@ interface Violation {
 }
 
 export default function ViolationsPage() {
-    const [violations, setViolations] = useState<Violation[]>([]);
+    // ✅ Load data during initialization (recommended by React)
+    const [violations, setViolations] = useState<Violation[]>(() => {
+        if (typeof window === "undefined") return [];
+        const stored = localStorage.getItem("guardian_violations");
+        return stored ? JSON.parse(stored) : [];
+    });
+
     const [selectedReport, setSelectedReport] = useState<Violation | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // 🔄 keep in sync with other tabs
     useEffect(() => {
-        const stored = localStorage.getItem("guardian_violations");
-        if (stored) setViolations(JSON.parse(stored));
+        const syncListener = () => {
+            const stored = localStorage.getItem("guardian_violations");
+            setViolations(stored ? JSON.parse(stored) : []);
+        };
+
+        window.addEventListener("storage", syncListener);
+        return () => window.removeEventListener("storage", syncListener);
     }, []);
 
     const handleDelete = (url: string) => {
@@ -47,6 +53,7 @@ export default function ViolationsPage() {
 
     const exportData = (type: "csv" | "json") => {
         if (!violations.length) return alert("No data to export!");
+
         if (type === "json") {
             const blob = new Blob([JSON.stringify(violations, null, 2)], {
                 type: "application/json",
@@ -55,20 +62,22 @@ export default function ViolationsPage() {
             a.href = URL.createObjectURL(blob);
             a.download = "violations.json";
             a.click();
-        } else {
-            const headers = Object.keys(violations[0]).join(",");
-            const rows = violations.map((v) =>
-                Object.values(v)
-                    .map((val) => `"${String(val).replace(/"/g, '""')}"`)
-                    .join(",")
-            );
-            const csv = [headers, ...rows].join("\n");
-            const blob = new Blob([csv], { type: "text/csv" });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = "violations.csv";
-            a.click();
+            return;
         }
+
+        const headers = Object.keys(violations[0]).join(",");
+        const rows = violations.map((v) =>
+            Object.values(v)
+                .map((val) => `"${String(val).replace(/"/g, '""')}"`)
+                .join(",")
+        );
+        const csv = [headers, ...rows].join("\n");
+
+        const blob = new Blob([csv], { type: "text/csv" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "violations.csv";
+        a.click();
     };
 
     const openModal = (report: Violation) => {
@@ -81,7 +90,6 @@ export default function ViolationsPage() {
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <div className="max-w-7xl mx-auto px-6 py-12">
-                {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -123,7 +131,6 @@ export default function ViolationsPage() {
                     </div>
                 </motion.div>
 
-                {/* Table */}
                 <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -158,7 +165,7 @@ export default function ViolationsPage() {
                                 ) : (
                                     violations.map((v, i) => (
                                         <motion.tr
-                                            key={i}
+                                            key={v.url}
                                             initial={{ opacity: 0, y: 10 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: i * 0.03 }}
@@ -178,7 +185,7 @@ export default function ViolationsPage() {
                                                 </a>
                                             </td>
                                             <td className="px-6 py-4 text-center">
-                                                {(v.requiredPages?.missing && v.requiredPages.missing.length > 0) ? (
+                                                {v.requiredPages?.missing?.length ? (
                                                     <span className="px-2.5 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
                                                         Missing Pages
                                                     </span>

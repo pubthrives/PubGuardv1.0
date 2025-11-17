@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { Globe, Loader2, Shield } from "lucide-react";
@@ -10,28 +10,49 @@ import { useRouter } from "next/navigation";
 
 const LOCAL_KEY = "guardian_violations";
 
-function saveViolationsToStorage(newResults: any[]) {
-    const existing = JSON.parse(localStorage.getItem(LOCAL_KEY) || "[]");
-    const mergedMap = new Map(existing.map((e: any) => [e.url, e]));
+// -------------------- TYPES --------------------
+export interface ViolationResult {
+    url: string;
+    scannedAt?: string;
+    totalViolations?: number;
+    violations?: unknown[];
+}
+
+interface ApiError {
+    message?: string;
+    status?: number;
+    [key: string]: unknown;
+}
+
+// -------------------- STORAGE FUNCTION --------------------
+function saveViolationsToStorage(newResults: ViolationResult[]) {
+    const existingRaw = localStorage.getItem(LOCAL_KEY);
+    const existing: ViolationResult[] = existingRaw ? JSON.parse(existingRaw) : [];
+
+    const mergedMap = new Map(existing.map((e) => [e.url, e]));
+
     for (const r of newResults) mergedMap.set(r.url, r);
+
     const updated = Array.from(mergedMap.values());
     localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event("storage"));
+
     return updated;
 }
 
+// -------------------- COMPONENT --------------------
 export default function SitesPage() {
     const router = useRouter();
     const [mode, setMode] = useState<"single" | "multiple">("single");
-    const [singleUrl, setSingleUrl] = useState<string>("");
-    const [multiUrls, setMultiUrls] = useState<string>("");
-    const [loading, setLoading] = useState<boolean>(false);
-    const [progress, setProgress] = useState<number>(0);
-    const [status, setStatus] = useState<string>("Ready to scan");
+    const [singleUrl, setSingleUrl] = useState("");
+    const [multiUrls, setMultiUrls] = useState("");
+    const [loading, setLoading] = useState(false);
+    const [progress, setProgress] = useState(0);
+    const [status, setStatus] = useState("Ready to scan");
 
     const wait = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-    // ✅ Single Site Scan
+    // -------------------- SINGLE SITE SCAN --------------------
     async function handleSingleScan(): Promise<void> {
         if (!singleUrl.trim() || !singleUrl.startsWith("http")) {
             toast.error("Please enter a valid site URL");
@@ -58,15 +79,13 @@ export default function SitesPage() {
                 await wait(500);
             }
 
-            const res = await axios.post("/api/scan-site", {
+            const res = await axios.post<ViolationResult>("/api/scan-site", {
                 url: singleUrl.trim(),
             });
 
-            if (!res.data) {
-                throw new Error("API returned no data.");
-            }
-            if (res.data.error) {
-                throw new Error(res.data.message || "API reported an error.");
+            if (!res.data) throw new Error("API returned no data.");
+            if ((res.data as ApiError).message) {
+                throw new Error((res.data as ApiError).message);
             }
 
             saveViolationsToStorage([res.data]);
@@ -74,36 +93,24 @@ export default function SitesPage() {
             setStatus("Scan complete");
             toast.success(`Scan complete for ${singleUrl}`, { id: "scan" });
 
-            setTimeout(() => {
-                router.push("/violations");
-            }, 1500);
-        } catch (err: any) {
-            console.error("❌ Detailed Scan Error:", err);
+            setTimeout(() => router.push("/violations"), 1500);
+        } catch (err) {
+            const error = err as AxiosError<ApiError>;
+            console.error("Scan Error:", error);
 
             let errorMessage = "Network error or server unreachable.";
 
-            if (err.response) {
-                if (
-                    typeof err.response.data === "object" &&
-                    err.response.data !== null &&
-                    err.response.data.message
-                ) {
-                    errorMessage = `Server Error: ${err.response.data.message} (Status: ${err.response.status})`;
-                } else if (typeof err.response.data === "string") {
-                    errorMessage = `Server Error: ${err.response.data} (Status: ${err.response.status})`;
-                } else if (
-                    err.response.data &&
-                    Object.keys(err.response.data).length === 0
-                ) {
-                    errorMessage = `Server Error: Empty response body (Status: ${err.response.status})`;
+            if (error.response) {
+                const body = error.response.data;
+                if (body?.message) {
+                    errorMessage = `Server Error: ${body.message} (Status: ${error.response.status})`;
                 } else {
-                    errorMessage = `Server Error: Received status ${err.response.status}`;
+                    errorMessage = `Server Error: Status ${error.response.status}`;
                 }
-            } else if (err.request) {
-                errorMessage =
-                    "No response received from the scanner server. Please check your connection or if the server is running.";
+            } else if (error.request) {
+                errorMessage = "No response received from the scanner server.";
             } else {
-                errorMessage = `Request setup failed: ${err.message}`;
+                errorMessage = `Request setup failed: ${error.message}`;
             }
 
             toast.error(`Failed: ${errorMessage}`, { id: "scan" });
@@ -117,12 +124,12 @@ export default function SitesPage() {
         }
     }
 
-    // ✅ Multiple Site Scan
+    // -------------------- MULTIPLE SITE SCAN --------------------
     async function handleMultipleScan(): Promise<void> {
         const urls = multiUrls
             .split("\n")
-            .map((u: string) => u.trim())
-            .filter((u: string) => u.startsWith("http"));
+            .map((u) => u.trim())
+            .filter((u) => u.startsWith("http"));
 
         if (urls.length === 0) {
             toast.error("Please enter at least one valid URL");
@@ -137,80 +144,51 @@ export default function SitesPage() {
             setStatus(`Scanning ${i + 1}/${urls.length}`);
 
             try {
-                const res = await axios.post("/api/scan-site", { url: urls[i] });
+                const res = await axios.post<ViolationResult>("/api/scan-site", {
+                    url: urls[i],
+                });
 
-                if (!res.data) {
-                    throw new Error("API returned no data for " + urls[i]);
-                }
-                if (res.data.error) {
-                    throw new Error(
-                        res.data.message || `API reported an error for ${urls[i]}.`
-                    );
-                }
-
+                if (!res.data) throw new Error("API returned no data");
                 saveViolationsToStorage([res.data]);
+
                 toast.success(`Scanned ${urls[i]}`, { id: `batch-${i}` });
-            } catch (err: any) {
-                let errorMessage = "Network error or server unreachable.";
-                if (err.response) {
-                    if (
-                        typeof err.response.data === "object" &&
-                        err.response.data !== null &&
-                        err.response.data.message
-                    ) {
-                        errorMessage = err.response.data.message;
-                    } else if (typeof err.response.data === "string") {
-                        errorMessage = err.response.data;
-                    } else if (
-                        err.response.data &&
-                        Object.keys(err.response.data).length === 0
-                    ) {
-                        errorMessage = `Empty response body (Status: ${err.response.status})`;
-                    } else {
-                        errorMessage = `Received status ${err.response.status}`;
-                    }
-                } else if (err.request) {
-                    errorMessage = "No response received";
-                } else {
-                    errorMessage = err.message;
+            } catch (err) {
+                const error = err as AxiosError<ApiError>;
+                let msg = "Network error";
+
+                if (error.response?.data?.message) {
+                    msg = error.response.data.message;
                 }
 
-                console.warn(`⚠️ Skipped ${urls[i]}: ${errorMessage}`);
+                console.warn(`Skipped ${urls[i]}: ${msg}`);
                 toast.error(`Failed ${urls[i]}`, { id: `batch-${i}` });
             }
 
             await wait(600);
         }
 
-        toast.success(`✅ Scanned ${urls.length} sites!`, { id: "batch" });
+        toast.success(`Scanned ${urls.length} sites!`, { id: "batch" });
         setLoading(false);
         setProgress(0);
         setStatus("Batch scan complete");
         setMultiUrls("");
 
-        setTimeout(() => {
-            router.push("/violations");
-        }, 1500);
+        setTimeout(() => router.push("/violations"), 1500);
     }
 
+    // -------------------- UI --------------------
     return (
         <div className="min-h-screen bg-gray-50 text-gray-900">
             <Toaster position="top-right" />
 
             <div className="max-w-3xl mx-auto px-6 py-12">
                 {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="text-center mb-12"
-                >
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="text-center mb-12">
                     <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
                         <Globe className="text-blue-600" size={24} />
                     </div>
                     <h1 className="text-3xl font-semibold text-gray-900">PubGuard</h1>
-                    <p className="text-gray-500 mt-2">
-                        AI-powered website compliance scanner
-                    </p>
+                    <p className="text-gray-500 mt-2">AI-powered website compliance scanner</p>
                 </motion.div>
 
                 {/* Tabs */}
@@ -221,9 +199,7 @@ export default function SitesPage() {
                                 key={m}
                                 whileTap={{ scale: 0.98 }}
                                 onClick={() => setMode(m as "single" | "multiple")}
-                                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m
-                                    ? "bg-white text-gray-900 shadow-sm"
-                                    : "text-gray-600 hover:text-gray-900"
+                                className={`px-5 py-2 text-sm font-medium rounded-lg transition-colors ${mode === m ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-900"
                                     }`}
                             >
                                 {m === "single" ? "Single Site" : "Multiple Sites"}
@@ -232,13 +208,9 @@ export default function SitesPage() {
                     </div>
                 </div>
 
-                {/* Single Site */}
+                {/* Single Site Scan */}
                 {mode === "single" && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
-                    >
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <div className="flex gap-3">
                             <input
                                 type="text"
@@ -252,9 +224,7 @@ export default function SitesPage() {
                                 whileTap={{ scale: 0.98 }}
                                 onClick={handleSingleScan}
                                 disabled={loading}
-                                className={`px-5 py-3 rounded-lg text-sm font-medium transition ${loading
-                                    ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                    : "bg-blue-600 text-white hover:bg-blue-700"
+                                className={`px-5 py-3 rounded-lg text-sm font-medium transition ${loading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-blue-600 text-white hover:bg-blue-700"
                                     }`}
                             >
                                 {loading ? (
@@ -270,22 +240,13 @@ export default function SitesPage() {
                         {/* Progress */}
                         <AnimatePresence>
                             {loading && (
-                                <motion.div
-                                    initial={{ opacity: 0, height: 0 }}
-                                    animate={{ opacity: 1, height: "auto" }}
-                                    exit={{ opacity: 0, height: 0 }}
-                                    className="mt-6"
-                                >
+                                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-6">
                                     <div className="flex justify-between text-xs text-gray-500 mb-2">
                                         <span>{status}</span>
                                         <span>{progress}%</span>
                                     </div>
                                     <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                                        <motion.div
-                                            initial={{ width: "0%" }}
-                                            animate={{ width: `${progress}%` }}
-                                            className="h-full bg-blue-500 rounded-full"
-                                        />
+                                        <motion.div initial={{ width: "0%" }} animate={{ width: `${progress}%` }} className="h-full bg-blue-500 rounded-full" />
                                     </div>
                                 </motion.div>
                             )}
@@ -293,13 +254,9 @@ export default function SitesPage() {
                     </motion.div>
                 )}
 
-                {/* Multiple Sites */}
+                {/* Multiple Site Scan */}
                 {mode === "multiple" && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
-                    >
+                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
                         <textarea
                             rows={5}
                             placeholder="Enter one URL per line&#10;https://example1.com&#10;https://example2.com"
@@ -312,18 +269,10 @@ export default function SitesPage() {
                             whileTap={{ scale: 0.98 }}
                             onClick={handleMultipleScan}
                             disabled={loading}
-                            className={`w-full py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${loading
-                                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                                : "bg-green-600 text-white hover:bg-green-700"
+                            className={`w-full py-3 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition ${loading ? "bg-gray-100 text-gray-400 cursor-not-allowed" : "bg-green-600 text-white hover:bg-green-700"
                                 }`}
                         >
-                            {loading ? (
-                                <Loader2 className="animate-spin" size={16} />
-                            ) : (
-                                <>
-                                    <Shield size={16} /> Scan All Sites
-                                </>
-                            )}
+                            {loading ? <Loader2 className="animate-spin" size={16} /> : (<><Shield size={16} /> Scan All Sites</>)}
                         </motion.button>
                     </motion.div>
                 )}

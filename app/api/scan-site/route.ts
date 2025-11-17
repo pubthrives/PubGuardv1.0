@@ -24,17 +24,23 @@ function getOpenAIClient() {
   }
 }
 
+interface AIViolation {
+  type: string;
+  excerpt: string;
+  confidence: number;
+}
+
 /* ----------------- UTIL: Logging helpers ----------------- */
 function now() {
   return new Date().toISOString();
 }
-function info(...args: any[]) {
+function info(...args: unknown[]) {
   console.log("[INFO]", now(), ...args);
 }
-function warn(...args: any[]) {
+function warn(...args: unknown[]) {
   console.warn("[WARN]", now(), ...args);
 }
-function errorLog(...args: any[]) {
+function errorLog(...args: unknown[]) {
   console.error("[ERROR]", now(), ...args);
 }
 
@@ -63,7 +69,7 @@ async function fetchHTML(url: string): Promise<string> {
     const html = typeof res.data === "string" ? res.data : String(res.data);
     info(`Fetched ${url} (${html.length} chars)`);
     return html;
-  } catch (err: any) {
+  } catch (err: unknown) {
     warn(`Failed to fetch ${url}:`, err?.message || err);
     return "";
   }
@@ -261,8 +267,8 @@ function checkForDuplicateContent(content: string, existing: string[]): boolean 
 
 /* ---------------- CLEAR VIOLATION DETECTION ---------------- */
 
-function detectClearViolations($: cheerio.Root, url: string): any[] {
-  const violations: any[] = [];
+function detectClearViolations($: cheerio.Root, url: string): { type: string; excerpt: string; confidence: number }[] {
+  const violations: { type: string; excerpt: string; confidence: number }[] = [];
   const bodyText = $("body").text().toLowerCase();
 
   const clearPhrases = [
@@ -311,7 +317,11 @@ function detectClearViolations($: cheerio.Root, url: string): any[] {
 
 /* ---------------- OPENAI ANALYSIS ---------------- */
 
-async function analyzeTextWithAI(text: string, url: string = "", context: string = ""): Promise<any> {
+async function analyzeTextWithAI(text: string, url: string = "", context: string = ""): Promise<{
+  violations: { type: string; excerpt: string; confidence: number }[];
+  summary: string;
+  suggestions: string[];
+}> {
   const client = getOpenAIClient();
   if (!client) {
     warn("OpenAI client not available; skipping AI analysis.");
@@ -367,10 +377,10 @@ Be conservative and ONLY flag clear violations.
     parsed.violations = Array.isArray(parsed.violations) ? parsed.violations : [];
     parsed.suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions : [];
 
-    parsed.violations = parsed.violations.filter((v: any) => (v.confidence || 0) >= 0.8);
+    parsed.violations = parsed.violations.filter((v: AIViolation) => (v.confidence || 0) >= 0.8);
 
     return parsed;
-  } catch (err: any) {
+  } catch (err: unknown) {
     errorLog("AI analysis failed for", url, err?.message || err);
     return { violations: [], summary: "AI error", suggestions: [] };
   }
@@ -399,7 +409,7 @@ async function scanSite(url: string) {
   const { found, missing } = checkRequiredPages(allLinks);
   info(`Required pages found: ${found.length}, missing: ${missing.length}`);
 
-  let crawlSet = new Set(allLinks.slice(0, 100));
+  const crawlSet = new Set(allLinks.slice(0, 100));
   crawlSet.add(url);
 
   const toExpand = Array.from(crawlSet).slice(0, 20);
@@ -436,7 +446,7 @@ async function scanSite(url: string) {
   }
 
   // Analyze POSTS only (skip static pages)
-  const pagesWithIssues: any[] = [];
+  const pagesWithIssues: PageIssue[] = [];
   const seenContents: string[] = [];
   let duplicatePostCount = 0;
   let policyViolationCount = 0;
@@ -486,7 +496,7 @@ async function scanSite(url: string) {
       const hasIssues = (aiRes.violations && aiRes.violations.length > 0) || (aiRes.suggestions?.length > 0) || (quality.issues?.length > 0);
       if (hasIssues) {
         // Count policy violations (exclude DuplicateContent)
-        const policyViolations = (aiRes.violations || []).filter((v: any) => v.type !== "DuplicateContent");
+        const policyViolations = (aiRes.violations || []).filter((v: AIViolation) => v.type !== "DuplicateContent");
         policyViolationCount += policyViolations.length;
 
         pagesWithIssues.push({
@@ -530,7 +540,7 @@ async function scanSite(url: string) {
 
   const totalViolations = policyViolationCount + duplicatePostCount;
 
-  const result: any = {
+  const result = {
     url,
     totalViolations,
     policyViolations: policyViolationCount,
@@ -575,7 +585,7 @@ async function verifyScript(url: string) {
     const html = await res.text();
     const found = html.includes("bootbot") || html.includes("cdn.bardnative.com/bootbot") || html.includes("bardnative.com/bootbot");
     return NextResponse.json({ found, url });
-  } catch (err: any) {
+  } catch (err: unknown) {
     errorLog("Verification failed:", err?.message || err);
     return NextResponse.json({ error: "Verification failed", message: err?.message || String(err) }, { status: 500 });
   }
@@ -600,7 +610,7 @@ export async function POST(request: NextRequest) {
     }
 
     return await scanSite(url);
-  } catch (err: any) {
+  } catch (err: unknown) {
     errorLog("POST handler error:", err?.message || err);
     return NextResponse.json({ error: "Internal server error", message: err?.message || String(err) }, { status: 500 });
   }

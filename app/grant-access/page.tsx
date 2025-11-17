@@ -4,9 +4,26 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Mail, Loader2 } from "lucide-react";
 
+/* ---------------- TYPES ---------------- */
+
+interface NetworkInfo {
+    networkCode: string;
+    displayName: string;
+}
+
+interface GrantResult {
+    status: "created" | "upgraded" | "already-admin" | "error";
+    network: string;
+    error?: string;
+}
+
+interface GrantResponse {
+    results?: GrantResult[];
+}
+
 export default function GrantAccessPage() {
     const [email, setEmail] = useState("");
-    const [networks, setNetworks] = useState<any[]>([]);
+    const [networks, setNetworks] = useState<NetworkInfo[]>([]);
     const [selectedNetwork, setSelectedNetwork] = useState("");
     const [loadingNetworks, setLoadingNetworks] = useState(true);
     const [loadingGrant, setLoadingGrant] = useState(false);
@@ -15,27 +32,32 @@ export default function GrantAccessPage() {
         null
     );
 
-    // ✅ Fetch available networks directly from backend
+    /* ---------------- LOAD NETWORKS ---------------- */
     useEffect(() => {
         const fetchNetworks = async () => {
             try {
                 const res = await fetch("https://gam-swift-api.onrender.com/networks", {
                     cache: "no-store",
                 });
+
                 if (!res.ok) throw new Error("Failed to fetch networks");
+
                 const data = await res.json();
-                setNetworks(data.networks || []);
-            } catch (err: any) {
-                console.error("Failed to load networks:", err.message);
+                const networksData: NetworkInfo[] = data.networks || [];
+
+                setNetworks(networksData);
+            } catch (err) {
+                console.error("Failed to load networks:", err);
                 setError("Failed to load networks. Please try again later.");
             } finally {
                 setLoadingNetworks(false);
             }
         };
+
         fetchNetworks();
     }, []);
 
-    // ✅ Grant access request
+    /* ---------------- GRANT ACCESS ---------------- */
     const handleGrantAccess = async () => {
         setMessage(null);
         setError(null);
@@ -44,12 +66,14 @@ export default function GrantAccessPage() {
             setError("Please enter a valid email address.");
             return;
         }
+
         if (!selectedNetwork) {
             setError("Please select a network.");
             return;
         }
 
         setLoadingGrant(true);
+
         try {
             const res = await fetch("https://gam-swift-api.onrender.com/grant-access", {
                 method: "POST",
@@ -61,7 +85,8 @@ export default function GrantAccessPage() {
             });
 
             if (!res.ok) throw new Error("Failed to grant access");
-            const data = await res.json();
+
+            const data: GrantResponse = await res.json();
             const result = data.results?.[0];
 
             if (!result) throw new Error("Invalid API response");
@@ -87,10 +112,14 @@ export default function GrantAccessPage() {
                     type: "error",
                 });
             }
-        } catch (err: any) {
-            console.error("Grant access failed:", err.message);
+        } catch (err) {
+            const message =
+                err instanceof Error ? err.message : "Unknown error occurred";
+
+            console.error("Grant access failed:", message);
+
             setMessage({
-                text: `❌ Failed to grant access: ${err.message}`,
+                text: `❌ Failed to grant access: ${message}`,
                 type: "error",
             });
         } finally {
@@ -98,6 +127,7 @@ export default function GrantAccessPage() {
         }
     };
 
+    /* ---------------- UI ---------------- */
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-6">
             <motion.div
@@ -109,7 +139,7 @@ export default function GrantAccessPage() {
                     Grant Google Ad Manager Access
                 </h1>
 
-                {/* Email Input */}
+                {/* Email */}
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         User Email
@@ -130,11 +160,12 @@ export default function GrantAccessPage() {
                     </div>
                 </div>
 
-                {/* Network Dropdown */}
+                {/* Networks */}
                 <div className="mb-6">
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                         Select Network
                     </label>
+
                     {loadingNetworks ? (
                         <div className="flex items-center gap-2 text-gray-500">
                             <Loader2 className="w-4 h-4 animate-spin" /> Loading networks...
@@ -148,6 +179,7 @@ export default function GrantAccessPage() {
                             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                         >
                             <option value="">Select a network...</option>
+
                             {networks.map((network) => (
                                 <option key={network.networkCode} value={network.networkCode}>
                                     {network.networkCode} – {network.displayName}
@@ -157,7 +189,7 @@ export default function GrantAccessPage() {
                     )}
                 </div>
 
-                {/* Grant Button */}
+                {/* Grant button */}
                 <button
                     onClick={handleGrantAccess}
                     disabled={loadingGrant}
